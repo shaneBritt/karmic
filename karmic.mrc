@@ -1,9 +1,7 @@
-;;for f (freenode head of staff), andrewbro, tintle and friends
+;;for f (freenode head of staff, hoLLA Bitch~), andrewbro, tintle and friends
 ;;right click channel for options
 ;;right click nicklist for options
 ;;Made with love, Shane 2022
-; /load -rs karmic.mrc
-
 
 alias config.set {
   ;;karma that bot considers good in order to consier them authentic (for modes and stuff)
@@ -270,7 +268,7 @@ on *:notice:*:*:{
       if (month isin $3-) { hadd -m ns.oam $hget(ns,target) 1 }
       if {$date(mmm) !isin $2-) && ($date(dd) !isin $2-) {
         hadd -m $network $+ .nsg $hget(ns,target) 1
-        echonick $hget(ns,target) is at minimum registered for over a day
+        echonick $hget(ns,target) $hget(ns,target) is at minimum registered for over a day
       }
     }
   }
@@ -294,7 +292,11 @@ alias goodkarma {
   hadd -m good karma $1
 }
 alias ginfo {
-  var %total = $calc($hget(seen. $+ $2,$1) + 0 + $hget(ns.name. $+ $2,$1) + 0 + $hget(respondsfast. $+ $2,$1) + 0 + $hget(msg. $+ $2,$1) + 0.001))
+  var %total = 0
+  var %total = $calc(%total + 0. $+ $calc(%total + 0 + $hget(seen. $+ $2,$1)))
+  var %total = $calc(%total + 0 + $hget(ns.name. $+ $2,$1))
+  var %total = $calc(%total + 0 + $hget(respondsfast. $+ $2,$1))
+  var %total = $calc(%total + 0 + $hget(msg. $+ $2,$1))
   var %total = $calc(%total + 0 + $hget(mode. $+ $2,$1))
   var %total = $calc(%total + 0 + $hget(join. $+ $2,$1))
   var %total = $calc(%total + 0 + $hget(part. $+ $2,$1))
@@ -350,8 +352,9 @@ alias ignorekarma {
 }
 
 alias karma {
+  var %total = 0
   if ($hget(ignorekarma. $+ $2,$1) != $null) || ($hget(ignorekarm. $+ $2,$2) != $null) { return 000 }
-  var %total = $calc(%total + 0 + $hget(seen. $+ $2,$1))
+  var %total = $calc(%total + 0. $+ $calc(%total + 0 + $hget(seen. $+ $2,$1)))
   var %total = $calc(%total + 0 + $hget(ns.name. $+ $2,$1))
   var %total = $calc(%total + 0 + $hget(respondsfast. $+ $2,$1))
   var %total = $calc(%total + 0 + $hget(msg. $+ $2,$1))

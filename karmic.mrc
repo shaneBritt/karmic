@@ -1,4 +1,4 @@
-;;for f (freenode head of staff, hoLLA Bitch~), andrewbro, tintle and friends
+;;for f (freenode head of staff), andrewbro, tintle and friends
 ;;right click channel for options
 ;;right click nicklist for options
 ;;Made with love, Shane 2022
@@ -23,14 +23,27 @@ on *:join:#:{
     }
   }
   if ($nick != $me) {
+    if ($left($nick,4) == web-) && ($network == freenode) {
+      if ($hget(greet. $+ $network,$chan) != $null) {
+        .notice $nick $hget(webgreet. $+ $network,$chan)
+      }
+    }
+    if ($hget(greet. $+ $network,$chan) != $null) && ($karma($nick,$network) <= $hget(good,karma)) {
+      .notice $nick $hget(greet. $+ $network,$chan)
+    }
     if ($hget(amode. $+ $network,$chan) != $null) {
       .timer 1 $r(35,75) { modeifgood $nick $chan $hget(amode. $+ $network,$chan)  }
     }
     hinc -m join. $+ $network $nick 1
-    if ($hget(ns.name,$nick) == $null)  {
-      .timernsinfo. $+ $network $+ . $+ $nick 1 $r(1,35) .msg nickserv info $nick
+    if ($hget(ns.name,$nick) == $null) && ($karma($nick,$network) <= $hget(good,karma))  {
+      .timernsinfo. $+ $network $+ . $+ $nick 1 $r(1,35) .nsinfo $nick
     }
   }
+}
+alias nsinfo {
+  .ignore NickServ
+  .msg Nickserv info $nick
+  .timerunig.nickserv 1 5 .ignore -r NickServ
 }
 
 alias prblems {
@@ -86,7 +99,7 @@ on *:text:*:*:{
   hinc -mu604800 msg. $+ $network $+ . $+ $chan $nick 1
   hinc -mu300 recenttalk. $+ $chan $nick 1
   if ($hget(recenttalk.. $+ $chan,$nick) >= 3) { hinc -mu604800 times.flood. $+ $network $nick 1 }
-  if ($hget(botmode,$chan) != $null) {
+  if ($hget(botmode. $+ $network,$chan) != $null) {
     if ($hget(pollchan. $+ $network,$chan) != $null) {
       if ($1 == end) {
         if ($2 == poll) { pollchanend $network $chan }
@@ -415,28 +428,103 @@ alias automode {
   }
   if ($2 == off) { hdel amode. $+ $network $chan | echo -ta Autmode off }
 }
+
+alias community {
+  var %a = 1 | var %b = $chan(0)
+  while (%a <= %b) {
+    if ($hget(community. $+ $network,$chan(%a)) != $null) {
+      msg $chan(%a) [Community] $hget(community. $+ $network,$chan(%a))
+    }
+    inc %a | inc %c
+  }
+}
+
+alias announce {
+  if ($me ison $2) {
+    hadd -m community. $+ $1 $2 $3-
+    echo -ta Set community announcer for $2 on $1 to announce:
+    echo -ta $hget(community. $+ $1,$2)
+    msg $2 [Community] Set announcement for $1 on $2 $+ : $hget(community. $+ $1,$2)
+  }
+}
+
+on *:input:#:{
+  if ($hget(lastspoke. $+ $network,$chan) == $null) {
+    echo -ta Channel information for $chan $+ :
+    echo -ta You last spoke $hget(lastspoke. $+ $network,$chan)
+    if ($hget(community. $+ $network,$chan) != $null) {
+      echo -ta You have community announcements: $hget(community. $+ $network,$chan)
+    }
+    if ($hget(greet. $+ $network,$chan) != $null) {
+      echo -ta You have an auto greeting for all new users: $hget(greet. $+ $network,$chan)
+    }
+    if ($hget(webgreet. $+ $network,$chan) != $null) {
+      echo -ta You have an auto greeting for web-* users: $hget(webgreet. $+ $network,$chan)
+    }
+    if ($hget(amode. $+ $network,$chan) != $null) {
+      echo -ta You have auto modes set for authentic users joining: $hget(amode. $+ $network,$chan)
+    }
+    if ($hget(autokb. $+ $network,$chan) != $null) {
+      echo -ta You have auto-kickban for users with bad karma: $hget(autokb. $+ $network,$chan)
+    }
+    if ($hget(botmode. $+ $network,$chan) != $null) {
+      echo -ta You have bot mode set for $chan $+ : $hget(botmode. $+ $network,$chan)
+    }
+  }
+  hadd -mu10800 lastspoke. $+ $network $chan $fulldate
+}
+
 menu channel {
-  automode on join (karmic):{
+  Community
+  .$chan Announcements:{
+    var %g = $?="Announce $chan community text every 24hours to say:"
+    if (%g == $null) {
+    var %g = Welcome to $chan $+ ! You are using a nickname that is non-authentic. /nick <nickname> and enjoy your stay. Register your nickname with /msg NickServ register <password> <email> Please remember we do not always answer right away, so stick around for a bit. }
+    announce $network $chan %g
+  }
+  .-
+  .Disable $chan Announcements:{
+    hdel announce. $+ $network $chan | echo -ta Disabled community announcements for $chan on $network
+    .timercommunity. $+ $network $+ . $+ $chan off
+  }
+  Greetings
+  .Greet Webusers:{
+    var %g = $?="Greet new web-* users with what message?"
+    if (%g == $null) { var %g = Welcome to $chan $+ ! You are using a nickname that is non-authentic. /nick <nickname> and enjoy your stay. Please remember we do not always answer right away, so stick around for a bit. }
+    hadd -m webgreet. $+ $network $chan %g
+    echo -ta Set greeting for web-* users: %g
+  }
+  .Greet All New Users:{
+    var %g = $?="Greet ALL new users with what message?"
+    if (%g == $null) { var %g = Welcome to $chan $+ ! You are using a nickname that is non-authentic. /nick <nickname> and enjoy your stay. Please remember we do not always answer right away, so stick around for a bit. }
+    hadd -m greet. $+ $network $chan %g
+    echo -ta Set greeting for ALL users: %g
+  }
+  .Auto Modes (Join)
+  .Set Auto Mode:{
     automode $?="+o ? +q ? +v ?" on
   }
-  automode remove:{ automode off }
-  automode status:{ automode }
+  .automode remove:{ automode off }
+  .-
+  .automode status:{ automode }
   -
-  botmode on:{ hadd -m botmode $chan 1 | echo -ta Botmode for $chan on }
-  botmode off:{ hdel botmode $chan 1 | echo -ta Botmode for $chan on }
+  Robot Mode
+  .botmode on:{ hadd -m botmode. $+ $network $chan 1 | echo -ta Botmode for $chan on }
+  .botmode off:{ hdel botmode. $+ $network $chan 1 | echo -ta Botmode for $chan on }
   -
-  autokb on join (karmic):{
+  Shit List
+  .autokb on join (karmic):{
     var %k = $?="Minimal karma (anything equal or less is kickbanned)"
     if (%k == $null) { var %k = $hget(good,karma) }
     hadd -m autokb. $+ $network $chan %k
     echo -ta Will kickban everybody who does not match minimal karmic score
   }
-  autokb off:{
+  .autokb off:{
     hadd -m autokb. $+ $network $chan %k
     echo -ta Will no longer kickban people.
   }
   -
-  mass-modes (karmic):{
+  mass-modes:{
     var %m = $?="mode? Example: +o"
     var %k = $?="karma? Example: 0.1, Leave empty for everybody"
     if (%k == $null) { var %k = 0 }
@@ -749,6 +837,7 @@ menu nicklist {
       inc %a
     }
   }
+  ..-
   ..Known Info:{
     var %a = 1
     while ($gettok($snicks,%a,44) != $null) {
@@ -757,6 +846,7 @@ menu nicklist {
       inc %a
     }
   }
+  ..-
   ..Show Karma:{
     var %a = 1
     while ($gettok($snicks,%a,44) != $null) {

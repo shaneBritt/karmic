@@ -500,7 +500,8 @@ menu channel {
     hadd -m greet. $+ $network $chan %g
     echo -ta Set greeting for ALL users: %g
   }
-  .Auto Modes (Join)
+  -
+  Auto Modes (Join)
   .Set Auto Mode:{
     automode $?="+o ? +q ? +v ?" on
   }

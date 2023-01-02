@@ -1,17 +1,6 @@
 ;;for f (freenode head of staff), andrewbro, tintle and friends
-;;right click channel for options
-;;right click nicklist for options
-;;Made with love, Shane 2022
-on *:connect:{
-  config.set
-  if ($network == Rizon) {
-    .timer 1 5 join #townsquare,#mystic,#metawoke,#timespace
-    ns identify me@rizonX
-    hs on
-  }
-}
-
-;;for f (freenode head of staff), andrewbro, tintle and friends
+;; //write karmic.mrc | load -rs karmic.mrc
+;; hold alt, press r, paste.
 ;;right click channel for options
 ;;right click nicklist for options
 ;;Made with love, Shane 2022

@@ -1,11 +1,11 @@
 # karmic
 irc helper for irc. Identify problems and add solutions for IRC channels/communities.
-users get a score based on how they use IRC networks. The scores are mostly bs and just for fun, but a lot of options are available to easily
-run and manage your IRC communities.
+users get a score based on how they use IRC networks.
 
-The script is meant to stop ban evaders and enforce authenticity among the communities.
-There are community announcrs to announce things every 24 hours.
-There are advance IRC operator popups to manage a network easily
+- The scores are mostly bs and just for fun, but a lot of options are available to easily run and manage your IRC communities.
+- The script is meant to stop ban evaders and enforce authenticity among the communities.
+- There are community announcrs to announce things every 24 hours.
+- There are advance IRC operator popups to manage a network easily
 
 Below is the botmode, when enabled you become a bot (kinda, you can still chat) but the bot mode will allow users to interact with each other with polls, questions, solutions, etc
 

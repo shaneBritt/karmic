@@ -533,6 +533,7 @@ menu channel {
     while (%a <= %b) {
       var %n = $nick($chan,%a)
       if ($karma(%n,$network) >= %k) { mode $chan %m %n }
+      inc %a
     }
   }
 }

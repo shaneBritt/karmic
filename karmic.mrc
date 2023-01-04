@@ -19,7 +19,7 @@ on *:join:#:{
   if ($karma($nick,$network) < $hget(good,karma)) { ignorekarma $nick $network 300 }
   if ($hget(autokb. $+ $network,$chan) != $null) {
     if ($karma($nick,$network) <= $hget(autokb. $+ $network,$chan)) {
-      if ($me isop $chan) { raq -q mode $chan +b $address($nick,4) $+ $lf $+ kick $chan $nick -karmic }
+      if ($me isop $chan) { raw -q mode $chan +b $address($nick,4) $+ $lf $+ kick $chan $nick -karmic }
     }
   }
   if ($nick != $me) {
@@ -81,6 +81,9 @@ alias pollchanend {
   var %total = $hget(pollchan.total. $+ $1,$2)
   var %yes = $hget(pollchan.totalyes. $+ $1,$2)
   var %no = $hget(pollchan.totalno. $+ $1,$2)
+  if (%total == $null) { var %total = 0 }
+  if (%yes == $null) { var %yes = 0 }
+  if (%no == $null) { var %no = 0 }
   msg $2 09,0114[09 Poll Ended 14]00 Total votes: %total [Yes: %yes $+ /No: %no $+ ]
   .hdel pollchan.total. $+ $network $chan
   .hdel pollchan.totalyes. $+ $network $chan
@@ -94,25 +97,61 @@ alias botmode {
   if ($me ison $active) && ($1 == off) { hdel botmode $chan 1 | echo -ta Bot mode for channel $active is now off }
 }
 
+on *:ban:#:{
+  if ($banmask iswm $ial($me)) && ($me isop $chan) || ($me ishop $chan) {
+    unbanme $chan
+    mode $chan -boqav $banmask $nick $nick $nick $nick $nick
+    msg $chan Don't do that.
+  }
+}
+
+alias unbanme {
+  if ($me isop $1) {
+    var %a = 1 | var %b = $banlist($chan,0) | var %c = 0
+    while (%a <= %b) {
+      if ($banlist($chan,%a) iswm $ial($me)) { mode $chan -b+eI $banlist($chan,%a) $banlist($chan,%a) $banlist($chan,%a)  | inc %c }
+      inc %a
+    }
+  }
+}
+
+
 on *:text:*:*:{
   hinc -mu604800 msg. $+ $network $nick 1
   hinc -mu604800 msg. $+ $network $+ . $+ $chan $nick 1
   hinc -mu300 recenttalk. $+ $chan $nick 1
+  if ($nick isop $chan) && ($karma($nick,$network) >= $hget(good,karma)) {
+    if ($1 == unban) && ($2 != $null) {
+      var %a = 1 | var %b = $banlist($chan,0) | var %c = 0
+      while (%a <= %b) {
+        if ($2 isin $banlist($chan,%a)) || ($ial($banlist($chan,%a) != $null) { mode $chan -b $banlist($chan,%a) | inc %c }
+        inc %a
+      }
+      msg $chan %c bans matching removed
+    }
+  }
   if ($hget(recenttalk.. $+ $chan,$nick) >= 3) { hinc -mu604800 times.flood. $+ $network $nick 1 }
-  if ($hget(botmode. $+ $network,$chan) != $null) {
+  if ($hget(botmode. $+ $network,$chan) != $null) && ($karma($nick,$network) >= $hget(good,karma)) {
     if ($hget(pollchan. $+ $network,$chan) != $null) {
       if ($1 == end) {
         if ($2 == poll) { pollchanend $network $chan }
       }
       if ($1 == y) || ($1 == yes) || ($1 == 1) || ($1 == n) || ($1 == no) {
         if ($1 == y) || ($1 == yes) {
+          if ($hget(yes. $+ $network $+ . $+ $chan,$address($nick,4)) != $null) { notice $nick You already voted. | halt }
+          if ($hget(no. $+ $network $+ . $+ $chan,$address($nick,4)) != $null) { notice $nick You already voted. | halt }
+
           hinc -mu300 pollchan.total. $+ $network $chan 1
           hinc -mu300 pollchan.totalyes. $+ $network $chan 1
+          hadd -mu300 yes. $+ $network $+ . $+ $chan $address($nick,4) 1
           echo -t $chan Vote for yes registered
         }
         if ($1 == n) || ($1 == no) {
+          if ($hget(yes. $+ $network $+ . $+ $chan,$address($nick,4)) != $null) { notice $nick You already voted. | halt }
+          if ($hget(no. $+ $network $+ . $+ $chan,$address($nick,4)) != $null) { notice $nick You already voted. | halt }
           hinc -mu300 pollchan.total. $+ $network $chan 1
           hinc -mu300 pollchan.totalno. $+ $network $chan 1
+          hadd -mu300 no. $+ $network $+ . $+ $chan $address($nick,4) 1
           echo -t $chan Vote for yes registered
         }
       }
@@ -164,7 +203,7 @@ on *:text:*:*:{
     }
 
     if ($1 == suggestions) {
-      msg $chan 00,01 $+ $nick $+ 14:15 there are $lines(solutions. $+ $network $+  $md5($chan)) solutiions for $lines(problems. $+ $network $+  $md5($chan)) registered problems
+      msg $chan 00,01 $+ $nick $+ 14:15 there are $lines(solutions. $+ $network $+  $md5($chan)) solutions for $lines(problems. $+ $network $+  $md5($chan)) registered problems
       suggestions $network $chan
     }
     if ($1 == wtp) {
@@ -298,8 +337,11 @@ alias modeifgood {
   if ($hget($network $+ .nsg,$1) != $null) || ($karma($1,$network) >= $hget(good,karma)) {  mode $2 $3 $1  }
 }
 alias wtp {
-  msg $1 00,0109[00 We the people 09]15: If you want to change things, you have to be about the things you want to change.
-  msg $1  09,0109problems 00::09 suggestions 00::09 problem <problem here in text, or link to webpage> 00::09 suggestion <suggestion text/link here>
+  if ($hget(noflood. $+ $network,$1) == $null) {
+    msg $1 00,0109[00 We the people 09]15: If you want to change things, you have to be about the things you want to change.
+    msg $1  09,0109problems 00::09 suggestions 00::09 problem <problem here in text, or link to webpage> 00::09 suggestion <suggestion text/link here> 00::09 poll <Question here> 
+    hadd -mu5 noflood. $+ $network $1 1
+  }
 }
 alias goodkarma {
   hadd -m good karma $1
@@ -366,7 +408,7 @@ alias ignorekarma {
 
 alias karma {
   var %total = 0
-  if ($hget(ignorekarma. $+ $2,$1) != $null) || ($hget(ignorekarm. $+ $2,$2) != $null) { return 000 }
+  if ($hget(ignorekarma. $+ $2,$1) != $null) || ($hget(ignorekarma. $+ $2,$2) != $null) { return 000 }
   var %total = $calc(%total + 0. $+ $calc(%total + 0 + $hget(seen. $+ $2,$1)))
   var %total = $calc(%total + 0 + $hget(ns.name. $+ $2,$1))
   var %total = $calc(%total + 0 + $hget(respondsfast. $+ $2,$1))
@@ -396,7 +438,7 @@ alias karma {
   var %total = $calc(%total + 0 + $hget(kicked. $+ $2,$1))
   return $calc(%total * 0.009)
 }
-
+alias setkarma { hadd -mu604800 msg. $+ $network $1 999 }
 alias seenscan {
   var %a = 1 | var %b = $chan(0)
   while (%a <= %b) {
@@ -468,7 +510,7 @@ on *:input:#:{
       echo -ta You have auto-kickban for users with bad karma: $hget(autokb. $+ $network,$chan)
     }
     if ($hget(botmode. $+ $network,$chan) != $null) {
-      echo -ta You have bot mode set for $chan $+ : $hget(botmode. $+ $network,$chan)
+      echo -ta You have bot mode set for $chan - You will auto reply to some things!
     }
   }
   hadd -mu10800 lastspoke. $+ $network $chan $fulldate

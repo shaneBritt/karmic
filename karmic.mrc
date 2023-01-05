@@ -99,9 +99,9 @@ alias botmode {
 
 on *:ban:#:{
   if ($banmask iswm $ial($me)) && ($me isop $chan) || ($me ishop $chan) {
-    unbanme $chan
-    mode $chan -boqav $banmask $nick $nick $nick $nick $nick
-    msg $chan Don't do that.
+    ;unbanme $chan
+    ;mode $chan -boqav $banmask $nick $nick $nick $nick $nick
+    ; msg $chan Don't do that.
   }
 }
 
@@ -109,7 +109,7 @@ alias unbanme {
   if ($me isop $1) {
     var %a = 1 | var %b = $banlist($chan,0) | var %c = 0
     while (%a <= %b) {
-      if ($banlist($chan,%a) iswm $ial($me)) { mode $chan -b+eI $banlist($chan,%a) $banlist($chan,%a) $banlist($chan,%a)  | inc %c }
+      if ($banlist($chan,%a) iswm $ial($me)) { mode $chan -b $banlist($chan,%a) | inc %c }
       inc %a
     }
   }

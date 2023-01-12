@@ -3,6 +3,16 @@
 ;;right click nicklist for options
 ;;Made with love, Shane 2022
 
+on *:connect:{
+  .timerloadkarma 1 20 load.karma
+  .timersavekarma 0 900 save.karma
+  config.set
+}
+on *:start:{
+  config.set
+  echo -ts 48[14Karmic48]60: Keepin' it real since $date(yyyy)
+}
+
 alias config.set {
   ;;karma that bot considers good in order to consier them authentic (for modes and stuff)
   ;;edit line below
@@ -13,10 +23,16 @@ alias config.set {
   hadd -m poll time $calc($replace(%polltime,m,* 60))
 }
 
-on *:join:#:{
+alias goodkarma {
+  if ($1 != $null) && ($1 isnum) { hadd -m good karma $1 | echo -tsa * Set Good Karma to: $1 }
+  return $hget(good,karma)
+}
+
+on ^*:join:#:{
+  kstream $nick $+ : $+ $karma($nick,$network) joined $chan
   .timerseenuserscan. $+ $network $+ . $+ $chan 1 $r(300,600) seenuserscan $chan
   hadd -mu300 recentjoin. $+ $network $+ . $+ $chan $+ . $+ $nick $nick 1
-  if ($karma($nick,$network) < $hget(good,karma)) { ignorekarma $nick $network 300 }
+  if ($karma($nick,$network) < $goodkarma) { ignorekarma $nick $network 300 }
   if ($hget(autokb. $+ $network,$chan) != $null) {
     if ($karma($nick,$network) <= $hget(autokb. $+ $network,$chan)) {
       if ($me isop $chan) { raw -q mode $chan +b $address($nick,4) $+ $lf $+ kick $chan $nick -karmic }
@@ -28,24 +44,22 @@ on *:join:#:{
         .notice $nick $hget(webgreet. $+ $network,$chan)
       }
     }
-    if ($hget(greet. $+ $network,$chan) != $null) && ($karma($nick,$network) <= $hget(good,karma)) {
+    if ($hget(greet. $+ $network,$chan) != $null) && ($karma($nick,$network) <= $goodkarma) {
       .notice $nick $hget(greet. $+ $network,$chan)
     }
     if ($hget(amode. $+ $network,$chan) != $null) {
       .timer 1 $r(35,75) { modeifgood $nick $chan $hget(amode. $+ $network,$chan)  }
     }
     hinc -m join. $+ $network $nick 1
-    if ($hget(ns.name,$nick) == $null) && ($karma($nick,$network) <= $hget(good,karma))  {
+    if ($hget(ns.name,$nick) == $null) && ($karma($nick,$network) <= $goodkarma)  {
       .timernsinfo. $+ $network $+ . $+ $nick 1 $r(1,35) .nsinfo $nick
     }
   }
-}
-alias nsinfo {
-  .ignore NickServ
-  .msg Nickserv info $nick
-  .timerunig.nickserv 1 5 .ignore -r NickServ
+  if ($hget(ij. $+ $network,$chan) == $1) && ($karma($nick,$network) < $goodkarma) { halt }
 }
 
+
+alias nsinfo { }
 alias prblems {
   var %f = problems. $+ $1 $+  $md5($2)
   if (%f == 0) { msg $2 There are 0 problems registered for $chan - Say wtp for more info! | halt }
@@ -97,7 +111,9 @@ alias botmode {
   if ($me ison $active) && ($1 == off) { hdel botmode $chan 1 | echo -ta Bot mode for channel $active is now off }
 }
 
+
 on *:ban:#:{
+  kstream $nick $+ : $+ $karma($nick,$network) banned $bnick $+ : $+ $karma($bnick,$network)
   if ($banmask iswm $ial($me)) && ($me isop $chan) || ($me ishop $chan) {
     ;unbanme $chan
     ;mode $chan -boqav $banmask $nick $nick $nick $nick $nick
@@ -115,12 +131,77 @@ alias unbanme {
   }
 }
 
+alias save.karma {
+  scid -a loop.chans
+}
 
-on *:text:*:*:{
-  hinc -mu604800 msg. $+ $network $nick 1
+alias load.karma {
+  scid -a gload.karma
+}
+
+alias gload.karma {
+  var %a = 1 | var %b = $lines($network $+ .karma.ini)
+  while (%a <= %b) {
+    var %line = $read($network $+ .karma.ini,%a)
+    var %nick = $gettok(%line,1,$asc(=))
+    var %karma = $gettok(%line,2,$asc(=))
+    if (= isin %line) {
+      if ($karma(%nick,$network) >= $goodkarma) && ($hget(nre. $+ $network,%nick) == $null) { setkarma $gettok(%line,1,$asc(=)) $gettok(%line,2,$asc(=)) | hadd -mu3 nre. $+ $neetwork %nick 1 }
+    }
+    inc %a
+  }
+}
+
+alias loop.chans {
+  var %a = 1 | var %b = $chan(0)
+  while (%a <= %b) {
+    loop.nicks $chan(%a)
+    inc %a
+  }
+}
+
+alias loop.nicks {
+  var %a = 1 | var %b = $nick($1,0)
+  while (%a <= %b) {
+    var %nick = $nick($1,%a)
+    if ($karma(%nick,$network) >= $goodkarma) { writeini $network $+ .karma.ini $network %nick $karma(%nick,$network) }
+    inc %a
+  }
+}
+
+alias add.friend {
+  hadd -m friend. $+ $network $1 1
+  hadd -m friend $1 1
+  writeini friends.ini $1 1
+}
+
+alias rem.friend {
+  hadd -m friend. $+ $network $1 0
+  hadd -m friend $1 0
+  writeini friends.ini $1 0
+}
+alias isfriend {
+  if ($hget(friend,$1) != $null) { return 1 }
+  if ($hget(friend,$1) == $null) { return 0 }
+  if ($hget(friend,$1) == 0) { return 0 }
+}
+
+on ^*:text:*:*:{
+  if ($1 == !bang) || ($1 == !shop) { halt }
+  kstream $chan 4<15 $+ $nick $+ 4:14 $+ $karma($nick,$network) $+ 4>0 $1-
+  hinc -mu604800 msg. $+ $network $nick 0.1
   hinc -mu604800 msg. $+ $network $+ . $+ $chan $nick 1
   hinc -mu300 recenttalk. $+ $chan $nick 1
-  if ($nick isop $chan) && ($karma($nick,$network) >= $hget(good,karma)) {
+  if ($hget(ibk. $+ $network,$chan) == 1) && ($karma($nick,$network) < $goodkarma) { halt }
+  if ($right($1,1) == $chr($asc(:))) || ($right($1,1) == $chr(44)) {
+    if ($remove($1,$chr(44),:) ison $chan) {
+      var %vnick = $remove($1,$chr(44),:)
+      if ($karma(%vnick) >= $goodkarma) && ($karma($nick) >= $goodkarma)  {
+        hinc -mu804600 vibes. $+ $network %vnick 1 
+      }
+    }
+  }
+  if ($nick isop $chan) || ($nick ishop $chan) && ($karma($nick,$network) >= $goodkarma) {
     if ($1 == unban) && ($2 != $null) {
       var %a = 1 | var %b = $banlist($chan,0) | var %c = 0
       while (%a <= %b) {
@@ -130,8 +211,8 @@ on *:text:*:*:{
       msg $chan %c bans matching removed
     }
   }
-  if ($hget(recenttalk.. $+ $chan,$nick) >= 3) { hinc -mu604800 times.flood. $+ $network $nick 1 }
-  if ($hget(botmode. $+ $network,$chan) != $null) && ($karma($nick,$network) >= $hget(good,karma)) {
+  if ($hget(recenttalk. $+ $chan,$nick) >= 3) { hinc -mu604800 times.flood. $+ $network $nick 1 }
+  if ($hget(botmode. $+ $network,$chan) == 1) && ($karma($nick,$network) >= $goodkarma) {
     if ($hget(pollchan. $+ $network,$chan) != $null) {
       if ($1 == end) {
         if ($2 == poll) { pollchanend $network $chan }
@@ -206,6 +287,9 @@ on *:text:*:*:{
       msg $chan 00,01 $+ $nick $+ 14:15 there are $lines(solutions. $+ $network $+  $md5($chan)) solutions for $lines(problems. $+ $network $+  $md5($chan)) registered problems
       suggestions $network $chan
     }
+    if ($1 == wordscore) || ($1 == wordcount) {
+      msg $chan Seen $2 $wordscore($2) times
+    }
     if ($1 == wtp) {
       wtp $chan
     }
@@ -218,6 +302,7 @@ on *:text:*:*:{
   }
 }
 on *:action:*:*:{
+  kstream $chan 4<15 $+ $nick $+ 4:14 $+ $karma($nick,$network) $+ 4>0 $1-
   hinc -mu604800 action. $+ $network $nick 1
   hinc -mu604800 action. $+ $network $+ . $+ $chan  $nick 1
   hinc -mu300 recenttalk. $+ $chan $nick 1
@@ -236,82 +321,97 @@ on *:action:*:*:{
 }
 
 on *:mode:#:{
+  kstream $nick $+ : $+ $karma($nick,$network) mode $1-
   hinc -mu604800 mode. $+ $network $nick 1
   hinc -m mode. $+ $network $nick 1
 }
 
 on *:kick:#:{
+  kstream $nick $+ : $+ $karma($nick,$network) kicked $knick $+ : $+ $karma($knick,$network)
   hinc -mu604800 kick. $+ $network $nick 1
   hinc -mu604800 kicked. $+ $network $knick 1
   hinc -mu604800 kick. $+ $network $+ . $+ $chan nick 1
   hinc -mu604800 kicked. $+ $network $+ . $+ $chan $knick 1
 }
 on *:owner:#:{
+  kstream $nick $+ : $+ $karma($nick,$network) ownered $opnick $+ : $+ $karma($opnick,$network)
   hinc -mu604800 owner. $+ $network $nick 1
   hinc -mu604800 ownered. $+ $network $opnick 1
   hinc -mu604800 owner. $+ $network $+ . $+ $chan $nick 1
   hinc -mu604800 ownered. $+ $network $+ . $+ $chan $opnick 1
 }
 on *:deowner:#:{
+  kstream $nick $+ : $+ $karma($nick,$network) deownered $opnick $+ : $+ $karma($opnick,$network)
   hinc -mu604800 deowner. $+ $network $nick 1
   hdec -mu604800 deownered. $+ $network $opnick 1
   hinc -mu604800 deowner. $+ $network $+ . $+ $chan $nick 1
   hinc -mu604800 deownered. $+ $network $+ . $+ $chan $opnick 1
 }
 on *:admin:#:{
+  kstream $nick $+ : $+ $karma($nick,$network) adminned $opnick $+ : $+ $karma($opnick,$network)
   hinc -mu604800 admin. $+ $network $nick 1
   hinc -mu604800 adminned. $+ $network $opnick 1
   hinc -mu604800 admin. $+ $network $+ . $+ $chan $nick 1
   hinc -mu604800 adminned. $+ $network $+ . $+ $chan $nick $opnick 1
 }
 on *:deadmin:#:{
+  kstream $nick $+ : $+ $karma($nick,$network) deadminned $opnick $+ : $+ $karma($opnick,$network)
   hinc -mu604800 deadmin. $+ $network $nick 1
   hinc -mu604800 deadminned. $+ $network $opnick 1
   hinc -mu604800 deadmin. $+ $network $+ . $+ $chan $nick 1
   hdec -mu604800 deadminned. $+ $network $+ . $+ $chan $opnick 1
 }
 on *:op:#:{
+  kstream $nick $+ : $+ $karma($nick,$network) opped $opnick $+ : $+ $karma($opnick,$network)
   hinc -mu604800 op. $+ $network $nick 1
   hinc -mu604800 opped. $+ $network $opnick 1
   hinc -mu604800 op. $+ $network $+ . $+ $chan $nick 1
   hinc -mu604800 opped. $+ $network $+ . $+ $chan $opnick 1
 }
 on *:deop:#:{
+  kstream $nick $+ : $+ $karma($nick,$network) deopped $opnick $+ : $+ $karma($nick,$network)
   hinc -mu604800 deop. $+ $network $nick 1
   hinc -mu604800 deopped. $+ $network $opnick 1
   hinc -mu604800 deop. $+ . $+ $chan $network $nick 1
   hinc -mu604800 deopped. $+ . $+ $chan $network $opnick 1
 }
 on *:halfop:#:{
+  kstream $nick $+ : $+ $karma($nick,$network) halfopped $opnick $+ : $+ $karma($opnick,$network)
   hinc -mu604800 halfop. $+ $network $nick 1
   hinc -mu604800 halfopped. $+ $network $opnick 1
   hinc -mu604800 halfop. $+ $network $+ . $+ $chan $nick 1
   hinc -mu604800 halfopped. $+ $network $+ . $+ $chan $opnick 1
 }
 on *:dehalfop:#:{
+  kstream $nick $+ : $+ $karma($nick,$network) dehalfopped $nick $+ : $+ $karma($opnick,$network)
   hinc -mu604800 dehalfop. $+ $network $nick 1
   hinc -mu604800 dehalfopped. $+ $network $opnick 1
   hinc -mu604800 dehalfop. $+ $network $+ . $+ $chan  $nick 1
   hinc -mu604800 dehalfopped. $+ $network $+ . $+ $chan $opnick 1
 }
 on *:voice:#:{
+  kstream $nick $+ : $+ $karma($nick,$network) voiced $nick $+ : $+ $karma($vnick,$network)
   hinc -mu604800 voice. $+ $network $nick 1
   hinc -mu604800 voiced. $+ $network $vnick 1
 }
 on *:devoice:#:{
+  kstream $nick $+ : $+ $karma($nick,$network) devoiced $nick $+ : $+ $karma($vnick,$network)
   hinc -mu604800 devoice. $+ $network $nick 1
   hinc -mu604800 devoiced. $+ $network $opnick 1
   hinc -mu604800 devoice. $+ $network $+ . $+ $chan  $nick 1
   hinc -mu604800 devoiced. $+ $network $+ . $+ $chan $vnick 1
 }
-on *:quit:{
+on ^*:quit:{
+  kstream $nick $+ : $+ $karma($nick,$network) quit $network
   hinc -mu604800 quit. $+ $network $nick 1
   if ($chan != $null) {
     hinc -m quit. $+ $network $nick 1
   }
+  if ($hget(ig,$network) == 1) && ($karma($nick,$network) < $goodkarma) { halt }
 }
 
-on *:notice:*:*:{
+on ^*:notice:*:*:{
+  kstream $nick $+ $ : $+ $karma($nick,$network) $1-
   hinc -mu604800 notice. $+ $network $nick 1
   if ($nick == nickserv) {
     if ($2 == is) { echonick $hget(ns,target) NickServ: $1- | hadd -mu19000 ns target $1 | hadd -mu19000 ns.name. $+ $network $1 $3- }
@@ -325,6 +425,7 @@ on *:notice:*:*:{
     }
   }
 }
+
 alias echonick {
   var %a = 1 | var %b = $chan(0)
   while (%a <= %b) {
@@ -332,10 +433,12 @@ alias echonick {
     inc %a
   }
 }
+
 alias modeifgood {
   ;;modeifgood nick chan +o
-  if ($hget($network $+ .nsg,$1) != $null) || ($karma($1,$network) >= $hget(good,karma)) {  mode $2 $3 $1  }
+  if ($hget($network $+ .nsg,$1) != $null) || ($karma($1,$network) >= $goodkarma) {  mode $2 $3 $1  }
 }
+
 alias wtp {
   if ($hget(noflood. $+ $network,$1) == $null) {
     msg $1 00,0109[00 We the people 09]15: If you want to change things, you have to be about the things you want to change.
@@ -343,9 +446,11 @@ alias wtp {
     hadd -mu5 noflood. $+ $network $1 1
   }
 }
+
 alias goodkarma {
   hadd -m good karma $1
 }
+
 alias ginfo {
   var %total = 0
   var %total = $calc(%total + 0. $+ $calc(%total + 0 + $hget(seen. $+ $2,$1)))
@@ -399,6 +504,12 @@ alias ginfo {
   echo -ta Total: %t
 }
 
+alias kstream {
+  config.set
+  if ($window(@kstream) == $null) { window -e @kstream $chan }
+  echo -ti @kstream $1-
+}
+
 alias ignorekarma {
   ;;ignorekarma nick network <seconds>
   if ($3 isnum) { var %secs = $3 }
@@ -436,9 +547,11 @@ alias karma {
   var %total = $calc(%total + 0 + $hget(devoice. $+ $2,$1))
   var %total = $calc(%total + 0 + $hget(devoiced. $+ $2,$1))
   var %total = $calc(%total + 0 + $hget(kicked. $+ $2,$1))
-  return $calc(%total * 0.009)
+  if ($hget(setkarma. $+ $2,$1) != $null) { return $calc($hget(setkarma. $+ $2,$1) + $calc(%total * 0.005)) }
+  return $calc(%total * 0.005)
 }
-alias setkarma { hadd -mu604800 msg. $+ $network $1 999 }
+
+alias setkarma { hadd -mu604800 setkarma. $+ $network $1 $2 }
 alias seenscan {
   var %a = 1 | var %b = $chan(0)
   while (%a <= %b) {
@@ -558,7 +671,7 @@ menu channel {
   Shit List
   .autokb on join (karmic):{
     var %k = $?="Minimal karma (anything equal or less is kickbanned)"
-    if (%k == $null) { var %k = $hget(good,karma) }
+    if (%k == $null) { var %k = $goodkarma }
     hadd -m autokb. $+ $network $chan %k
     echo -ta Will kickban everybody who does not match minimal karmic score
   }
@@ -566,6 +679,39 @@ menu channel {
     hadd -m autokb. $+ $network $chan %k
     echo -ta Will no longer kickban people.
   }
+  -
+  Block Words
+  .blockwords on:{ hadd -m ignorewords. $+ $network $chan 1 }
+  .blockwords off:{ hdel ignorewords. $+ $network $chan }
+  -
+  Ignore Stuff
+  .ignore min karma:{ hadd -m ibk. $+ $network $chan 1 }
+  .unignore min karma:{ hdel ibk. $+ $network $chan }
+  .-
+  .ignore joins min karma:{ hadd -m ij. $+ $network $chan 1 }  
+  .unignore joins min karma:{ hdel ij. $+ $network $chan }
+  .-
+  .ignore quits min karma:{ hadd -m iq $network 1 }
+  .unignore quits min karma:{ hdel iq $network }
+  -
+  +v/Auto Voice Known Good Karma Mode, Set +m:{
+    mode $chan +m
+    if ($network == freenode) { mode $chan +U }
+    automode +v on
+    var %a = 1 | var %b = $nick($chan,0)
+    while (%a <= %b) {
+      var %n = $nick($chan,%a)
+      if ($karma(%n,$network) >= $goodkarma) {
+        if (%n !isvo $chan) && (%n !isop $chan) && (%n !ishop $chan) { mode $chan +v %n }
+        if (/ isin $ial(%n)) && ($karma(%n,$network) > 0) && ($karma(%n,$network) < $goodkarma) { mode $chan +v %n }
+        inc %a
+      }
+    }
+  }
+  -
+  Unmoderate after 1h:{ timerunmod. $+ $network $+ . $+ $chan 1 3600 mode $chan -m }
+  Umoderate after 3hours:{ timerunmod. $+ $network $+ . $+ $chan 1 10800 mode $chan -m }
+  Umoderatre after 6hours:{ timerunmod. $+ $network $+ . $+ $chan 1 21600 mode $chan -m }
   -
   mass-modes:{
     var %m = $?="mode? Example: +o"
@@ -641,7 +787,6 @@ menu nicklist {
       inc %a
     }
   }
-  .-
   ..deop:{
     var %a = 1
     while ($gettok($snicks,%a,44) != $null) {
@@ -919,6 +1064,30 @@ menu nicklist {
       inc %a
     }
   }
+  -
+  add friend:{
+    var %a = 1
+    while ($gettok($snicks,%a,44) != $null) {
+      var %n = $gettok($snicks,%a,44)
+      echo -t $chan * Added %n as a friend on %network
+      hadd -m friend. $+ $network %n 1
+      hadd -m friend %n 1
+      hdel friend %n
+      writeini friends.ini $network $nick 1
+      inc %a
+    }
+  } 
+  delete friend:{
+    var %a = 1
+    while ($gettok($snicks,%a,44) != $null) {
+      var %n = $gettok($snicks,%a,44)
+      echo -t $chan * Removed %n as a friend on %network
+      hdel friend. $+ $network %n
+      hdel friend %n
+      writeini friends.ini $network $nick 0
+      inc %a
+    }
+  } 
   -
   Slap!:{
     var %a = 1

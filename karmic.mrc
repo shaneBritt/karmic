@@ -114,10 +114,7 @@ alias botmode {
 
 on *:ban:#:{
   kstream $nick $+ : $+ $karma($nick,$network) banned $bnick $+ : $+ $karma($bnick,$network)
-  if ($banmask iswm $ial($me)) && ($me isop $chan) || ($me ishop $chan) {
-    ;unbanme $chan
-    ;mode $chan -boqav $banmask $nick $nick $nick $nick $nick
-    ; msg $chan Don't do that.
+  if ($banmask iswm $ial($me)) && ($me isop $chan) {
   }
 }
 
@@ -187,7 +184,9 @@ alias isfriend {
 }
 
 on ^*:text:*:*:{
-  if ($1 == !bang) || ($1 == !shop) { halt }
+  if ($1 == !bang) || ($1 == !shop) || ($1 == !reload) && ($hget(ignoreducks. $+ $network,$chan) == 1) { halt }
+  if ( isin $1-) && (Duck isin $nick) && ($hget(ignoreducks. $+ $network,$chan) == 1) { halt }
+  if ($hget(ignorebk. $+ $network,$chan) == 1) && ($karma($nick,$network) < $goodkarma) { halt }
   kstream $chan 4<15 $+ $nick $+ 4:14 $+ $karma($nick,$network) $+ 4>0 $1-
   hinc -mu604800 msg. $+ $network $nick 0.1
   hinc -mu604800 msg. $+ $network $+ . $+ $chan $nick 1
@@ -649,7 +648,7 @@ menu channel {
     hadd -m webgreet. $+ $network $chan %g
     echo -ta Set greeting for web-* users: %g
   }
-  .Greet All New Users:{
+  .Greet All New Users (non web):{
     var %g = $?="Greet ALL new users with what message?"
     if (%g == $null) { var %g = Welcome to $chan $+ ! You are using a nickname that is non-authentic. /nick <nickname> and enjoy your stay. Please remember we do not always answer right away, so stick around for a bit. }
     hadd -m greet. $+ $network $chan %g
@@ -724,6 +723,20 @@ menu channel {
       inc %a
     }
   }
+  -
+  Ignore Stuff
+  .Ignore Ducks:{ hadd -m ignoreducks. $+ $network $chan 1 }
+  .Unignore Ducks:{ hdel ignoreducks. $+ $network $chan }
+  .-
+  .Ignore No-Good Karma:{ hadd -m ignorebk. $+ $network $chan 1 }
+  .Unignore No-Good Karma:{ hdel ignorebk. $+ $network $chan }
+  -
+  .Set Acceptable Karma:{
+    var %gk = $goodkarma
+    goodkarma $?=" Score? IE: 0.5 - Leave blank for default "
+  }
+  .See Acceptable Karma:{ echo -ta Karma Score: $goodkarma }
+
 }
 menu nicklist {
   whois:{

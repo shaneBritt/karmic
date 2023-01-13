@@ -574,11 +574,11 @@ alias kscan {
 
 alias automode {
   if ($1 == $null) {
-    echo -ta $hget(amode. $+ $network,$chan)
+    if ($hget(amode. $+ $network,$chan) != 1) { echo -ta Automode is off. }
   }
   if ($2 == on) { 
     hadd -m amode. $+ $network $chan $1
-    echo -ta Will now set mode $1 on new users
+    echo -ta Will now set mode $1 on new users with $goodkarma score
   }
   if ($2 == off) { hdel amode. $+ $network $chan | echo -ta Autmode off }
 }
@@ -659,8 +659,8 @@ menu channel {
   .Set Auto Mode:{
     automode $?="+o ? +q ? +v ?" on
   }
-  .automode remove:{ automode off }
   .-
+  .automode remove:{ automode off }
   .automode status:{ automode }
   -
   Robot Mode

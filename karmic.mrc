@@ -1,6 +1,3 @@
-;;for f (freenode head of staff), andrewbro, tintle and friends
-;;right click channel for options
-;;right click nicklist for options
 ;;Made with love, Shane 2022
 
 on *:connect:{
@@ -642,7 +639,7 @@ menu channel {
     .timercommunity. $+ $network $+ . $+ $chan off
   }
   Greetings
-  .Greet Webusers:{
+  .Greet Web-users:{
     var %g = $?="Greet new web-* users with what message?"
     if (%g == $null) { var %g = Welcome to $chan $+ ! You are using a nickname that is non-authentic. /nick <nickname> and enjoy your stay. Please remember we do not always answer right away, so stick around for a bit. }
     hadd -m webgreet. $+ $network $chan %g
@@ -693,7 +690,7 @@ menu channel {
   .ignore quits min karma:{ hadd -m iq $network 1 }
   .unignore quits min karma:{ hdel iq $network }
   -
-  +v/Auto Voice Known Good Karma Mode, Set +m:{
+  +mv and Auto Voice Good Karma Mode:{
     mode $chan +m
     if ($network == freenode) { mode $chan +U }
     automode +v on
@@ -702,9 +699,9 @@ menu channel {
       var %n = $nick($chan,%a)
       if ($karma(%n,$network) >= $goodkarma) {
         if (%n !isvo $chan) && (%n !isop $chan) && (%n !ishop $chan) { mode $chan +v %n }
-        if (/ isin $ial(%n)) && ($karma(%n,$network) > 0) && ($karma(%n,$network) < $goodkarma) { mode $chan +v %n }
-        inc %a
+        if ($network == freenode) && (/ isin $ial(%n)) && ($karma(%n,$network) > 0) && ($karma(%n,$network) < $goodkarma) { mode $chan +v %n }
       }
+      inc %a
     }
   }
   -
@@ -1100,7 +1097,7 @@ menu nicklist {
       writeini friends.ini $network $nick 0
       inc %a
     }
-  } 
+  }
   -
   Slap!:{
     var %a = 1

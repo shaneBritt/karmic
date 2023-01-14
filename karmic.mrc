@@ -4,7 +4,7 @@
 ;;Made with love, Shane 2022
 
 on *:connect:{
-  .timerloadkarma 1 20 load.karma
+  .timerloadkarma 1 10 load.karma
   .timersavekarma 0 900 save.karma
   config.set
 }

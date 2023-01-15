@@ -31,7 +31,7 @@ alias goodkarma {
 on ^*:join:#:{
   kstream $nick $+ : $+ $karma($nick,$network) joined $chan
   .timerseenuserscan. $+ $network $+ . $+ $chan 1 $r(300,600) seenuserscan $chan
-  hadd -mu300 recentjoin. $+ $network $+ . $+ $chan $+ . $+ $nick $nick 1
+  hadd -mu300 recentjoin. $+ $network $+ . $+ $chan $nick 1
   if ($karma($nick,$network) < $goodkarma) { ignorekarma $nick $network 300 }
   if ($hget(autokb. $+ $network,$chan) != $null) {
     if ($karma($nick,$network) <= $hget(autokb. $+ $network,$chan)) {
@@ -55,7 +55,7 @@ on ^*:join:#:{
       .timernsinfo. $+ $network $+ . $+ $nick 1 $r(1,35) .nsinfo $nick
     }
   }
-  if ($hget(ij. $+ $network,$chan) == $1) && ($karma($nick,$network) < $goodkarma) { halt }
+  if ($hget(ij. $+ $network,$chan) == 1) && ($karma($nick,$network) < $goodkarma) { halt }
 }
 
 
@@ -192,7 +192,7 @@ on ^*:text:*:*:{
   kstream $chan 4<15 $+ $nick $+ 4:14 $+ $karma($nick,$network) $+ 4>0 $1-
   hinc -mu604800 msg. $+ $network $nick 0.1
   hinc -mu604800 msg. $+ $network $+ . $+ $chan $nick 1
-  hinc -mu300 recenttalk. $+ $chan $nick 1
+  hinc -mu5 recenttalk. $+ $network $+ . $+ $chan $nick 1
   if ($hget(ibk. $+ $network,$chan) == 1) && ($karma($nick,$network) < $goodkarma) { halt }
   if ($right($1,1) == $chr($asc(:))) || ($right($1,1) == $chr(44)) {
     if ($remove($1,$chr(44),:) ison $chan) {
@@ -212,7 +212,26 @@ on ^*:text:*:*:{
       msg $chan %c bans matching removed
     }
   }
-  if ($hget(recenttalk. $+ $chan,$nick) >= 3) { hinc -mu604800 times.flood. $+ $network $nick 1 }
+  if ($hget(recenttalk. $+ $network $+ . $+ $chan,$nick) >= 3) {
+    hinc -mu604800 times.flood. $+ $network $nick 1
+    if ($karma($nick,$network) <= $goodkarma) && ($hget(recentjoin. $+ $network $+ . $+ $chan,$nick) == 1) {
+      if ($hget(banflood. $+ $network,$chan) == 1) {
+        if ($network == freenode) { cs quiet $chan +6h $address($nick,4) spam/flood }
+        if ($network != freenode) {
+          mode $chan +b $address($nick,4)
+        }
+        hdel recenttalk. $network $+ . $+ $chan $nick
+      }
+      if ($hget(shunflood. $+ $network,$chan) == 1) {
+        shun $nick 6h flood/spam
+        hdel recenttalk. $network $+ . $+ $chan $nick
+      }
+      if ($hget(kbflood. $+ $network,$chan) == 1) {
+        raw -q kick $chan $nick $+ $lf $+ mode $chan +b $address($nick,4)
+        hdel recenttalk. $network $+ . $+ $chan $nick
+      }
+    }
+  }
   if ($hget(botmode. $+ $network,$chan) == 1) && ($karma($nick,$network) >= $goodkarma) {
     if ($hget(pollchan. $+ $network,$chan) != $null) {
       if ($1 == end) {
@@ -658,7 +677,7 @@ menu channel {
   }
   -
   Auto Modes (Join)
-  .Set Auto Mode:{
+  .Set Auto Mode +o/a/q:{
     automode $?="+o ? +q ? +v ?" on
   }
   .-
@@ -685,7 +704,7 @@ menu channel {
   .blockwords on:{ hadd -m ignorewords. $+ $network $chan 1 }
   .blockwords off:{ hdel ignorewords. $+ $network $chan }
   -
-  Ignore Stuff
+  Ignore Karmic Stuff
   .ignore min karma:{ hadd -m ibk. $+ $network $chan 1 }
   .unignore min karma:{ hdel ibk. $+ $network $chan }
   .-
@@ -694,6 +713,12 @@ menu channel {
   .-
   .ignore quits min karma:{ hadd -m iq $network 1 }
   .unignore quits min karma:{ hdel iq $network }
+  -
+  .Ignore Ducks:{ hadd -m ignoreducks. $+ $network $chan 1 }
+  .Unignore Ducks:{ hdel ignoreducks. $+ $network $chan }
+  .-
+  .Ignore No-Good Karma:{ hadd -m ignorebk. $+ $network $chan 1 }
+  .Unignore No-Good Karma:{ hdel ignorebk. $+ $network $chan }
   -
   +mv and Auto Voice Good Karma Mode:{
     mode $chan +m
@@ -726,12 +751,15 @@ menu channel {
     }
   }
   -
-  Ignore Stuff
-  .Ignore Ducks:{ hadd -m ignoreducks. $+ $network $chan 1 }
-  .Unignore Ducks:{ hdel ignoreducks. $+ $network $chan }
+  Anti Flood
+  .Auto Shun Flooders ON:{ hadd -m shunflood. $+ $network $chan 1 | echo -tais Set $channel to shun flooders if theyre new and have no karma }
+  .Auto Shun Flooders OFF:{ hdel shunflood. $+ $network $chan | echo -tais Unset $channel to shun flooders if theyre new and have no karma }
   .-
-  .Ignore No-Good Karma:{ hadd -m ignorebk. $+ $network $chan 1 }
-  .Unignore No-Good Karma:{ hdel ignorebk. $+ $network $chan }
+  .Auto Muteban Flooders ON:{ hadd -m banflood. $+ $network $chan 1 | echo -tais Set $channel to mute/ban flooders if theyre new and have no karma }
+  .Auto Muteban Flooders OFF:{ hdel banflood. $+ $network $chan | echo -tais Unset $channel to mute/ban flooders if theyre new and have no karma }
+  .-
+  .Auto Kickban Flooders ON:{ hadd -m kbflood. $+ $network $chan 1 | echo -tais Set $channel to kick ban flooders if theyre new and have no karma }
+  .Auto Kickban Flooders OFF:{ hdel kbflood. $+ $network $chan | echo -tais Unset $channel to kick ban flooders if theyre new and have no karma }
   -
   .Set Acceptable Karma:{
     var %gk = $goodkarma

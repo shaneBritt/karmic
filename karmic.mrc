@@ -1,3 +1,6 @@
+;;for f (freenode head of staff), andrewbro, tintle and friends
+;;right click channel for options
+;;right click nicklist for options
 ;;Made with love, Shane 2022
 
 on *:connect:{
@@ -139,8 +142,10 @@ alias gload.karma {
     var %line = $read($network $+ .karma.ini,%a)
     var %nick = $gettok(%line,1,$asc(=))
     var %karma = $gettok(%line,2,$asc(=))
-    if (= isin %line) {
-      if ($karma(%nick,$network) >= $goodkarma) && ($hget(nre. $+ $network,%nick) == $null) { setkarma $gettok(%line,1,$asc(=)) $gettok(%line,2,$asc(=)) | hadd -mu3 nre. $+ $neetwork %nick 1 }
+    if ($gettok(%line,0,$asc(=)) >= 1) && ($chr($asc([)) !isin %line) {
+      if ($karma(%nick,$network) != $null) && ($hget(nre. $+ $network,%nick) == $null) {
+        setkarma $gettok(%line,1,$asc(=)) $gettok(%line,2,$asc(=)) | hadd -mu3 nre. $+ $neetwork %nick 1
+      }
     }
     inc %a
   }
@@ -414,7 +419,7 @@ on ^*:notice:*:*:{
     if (registered isin $1) || (registered isin $2) {
       if (year isin $3-) { hadd -m ns.oay $hget(ns,target) 1 }
       if (month isin $3-) { hadd -m ns.oam $hget(ns,target) 1 }
-      if {$date(mmm) !isin $2-) && ($date(dd) !isin $2-) {
+      if ($date(mmm) !isin $2-) && ($date(dd) !isin $2-) {
         hadd -m $network $+ .nsg $hget(ns,target) 1
         echonick $hget(ns,target) $hget(ns,target) is at minimum registered for over a day
       }
@@ -543,8 +548,8 @@ alias karma {
   var %total = $calc(%total + 0 + $hget(devoice. $+ $2,$1))
   var %total = $calc(%total + 0 + $hget(devoiced. $+ $2,$1))
   var %total = $calc(%total + 0 + $hget(kicked. $+ $2,$1))
-  if ($hget(setkarma. $+ $2,$1) != $null) { return $calc($hget(setkarma. $+ $2,$1) + $calc(%total * 0.005)) }
-  return $calc(%total * 0.005)
+  ;if ($hget(setkarma. $+ $2,$1) != $null) { var $total = $calc($hget(setkarma. $+ $2,$1) + 0 + %total) }
+  return $calc($calc(%total * 0.01) + $hget(setkarma. $+ $2,$1))
 }
 
 alias setkarma { hadd -mu604800 setkarma. $+ $network $1 $2 }

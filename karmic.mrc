@@ -194,8 +194,8 @@ on ^*:text:*:#:{
       if ($gettok($hget(autoshunwords. $+ $network,$chan),%a,32) iswm $1-) {
         echo -ti $chan * Auto shun word $gettok($hget(autoshunwords. $+ $network,$chan),%a,32) detected. Applying shun.
         shun $nick 36h flood/spam
+        inc %a
       }
-      inc %a
     }
   }
   if ($hget(autobanwords. $+ $network,$chan) != $null) && ($karma($nick,$network) < $goodkarma) {

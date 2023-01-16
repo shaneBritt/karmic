@@ -203,8 +203,10 @@ on ^*:text:*:#:{
     while (%a <= %b) {
       if ($gettok($hget(autobanwords. $+ $network,$chan),%a,32) iswm $1-) {
         echo -ti $chan * Auto ban word $gettok($hget(autobanwords. $+ $network,$chan),%a,32) detected. Applying ban.
-        if ($network == freenode) { cs quiet $chan +24h $address($nick,4) | halt }
-        if ($network != freenode) { mode $chan +b $address($nick,4) | halt }
+        if ($nick isreg $chan) && ($me isop $chan) || ($me ishop $chan) {
+          if ($network == freenode) { cs quiet $chan +24h $address($nick,4) }
+          if ($network != freenode) { mode $chan +b $address($nick,4) | kick $chan $nick }
+        }
       }
       inc %a
     }
@@ -718,7 +720,7 @@ menu channel {
     echo -ta Will kickban everybody who does not match minimal karmic score
   }
   .Auto Kickban Users (< $+ $goodkarma $+ ) OFF:{
-    hadd -m autokb. $+ $network $chan %k
+    .hdel autokb. $+ $network $chan 
     echo -ta Will no longer kickban people.
   }
   -

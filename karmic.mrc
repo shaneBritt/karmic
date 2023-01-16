@@ -48,7 +48,7 @@ on ^*:join:#:{
       .notice $nick $hget(greet. $+ $network,$chan)
     }
     if ($hget(amode. $+ $network,$chan) != $null) {
-      .timer 1 $r(35,75) { modeifgood $nick $chan $hget(amode. $+ $network,$chan)  }
+      .timer 1 $r(35,75) modeifgood $nick $chan $hget(amode. $+ $network,$chan)
     }
     hinc -m join. $+ $network $nick 1
     if ($hget(ns.name,$nick) == $null) && ($karma($nick,$network) <= $goodkarma)  {
@@ -194,7 +194,6 @@ on ^*:text:*:#:{
       if ($gettok($hget(autoshunwords. $+ $network,$chan),%a,32) iswm $1-) {
         echo -ti $chan * Auto shun word $gettok($hget(autoshunwords. $+ $network,$chan),%a,32) detected. Applying shun.
         shun $nick 36h flood/spam
-        halt
       }
       inc %a
     }
@@ -206,7 +205,6 @@ on ^*:text:*:#:{
         echo -ti $chan * Auto ban word $gettok($hget(autoshunwords. $+ $network,$chan),%a,32) detected. Applying ban.
         if ($network == freenode) { cs quiet $chan +24h $address($nick,4) | halt }
         if ($network != freenode) { mode $chan +b $address($nick,4) | halt }
-        halt
       }
       inc %a
     }
@@ -729,48 +727,54 @@ menu channel {
     var %w = $?="Add wildcard word. Like *ban*me*now*"
     var %asw = $hget(autoshunwords. $+ $network,$chan) 
     if (%w == $null) { echo -tias * Error: Enter word next time! | halt }
-    hadd -m autoshunwords. $+ $network $chan %asw %w
+    echo -tai $chan * Will now auto ban users for words: %asw %w
+    hadd -m autoshunwords. $+ $network $chan $remove(%asw,%w) %w
   }
   .Remove Auto-Shun Word:{
     var %w = $?="Word to remove, must contain wildcard chars (* and ? etc) "
     var %asw = $hget(autoshunwords. $+ $network,$chan) 
-    if (%w == $null) { echo -tias * Error: Enter word next time! | halt }
-    if ($asw == $null) { echo -tias * Error: Word didn't exist. No auto shun word list! | halt }
-    hadd -m autoshunwords. $+ $network $chan $remove(%w,%asw)
+    if (%w == $null) { echo -tia * Error: Enter word next time! | halt }
+    if ($asw == $null) { echo -tia * Error: Word didn't exist. No auto shun word list! | halt }
+    if ($remove(%w,%asw) != $null) { hadd -m autoshunwords. $+ $network $chan $remove(%w,%asw) }
+    if ($remove(%w,%asw) == $null) { hdel autoshunwords. $+ $network $chan }
     echo -tias * Will autoshun people who say words: $hget(autoshunwords. $+ $network $chan)
   }
+  .-
   .Shun Words List:{
-    var %w = $hget(autoshunwords. $+ $network $chan)
-    if (%w != $null) { echo -tias * Will autoshun people who say words: $hget(autoshunwords. $+ $network $chan) }
-    if (%w == $null) { Echo * There are no autoshun words for $chan on $network }
+    var %w = $hget(autoshunwords. $+ $network,$chan)
+    if (%w != $null) { echo -tia * Will autoshun people who say words: $hget(autoshunwords. $+ $network,$chan) }
+    if (%w == $null) { echo -tia * There are no autoshun words for $chan on $network }
   }
   .Clear Shun Words List:{
     echo -tia * Removed autoshun words for $chan
-    hdel autobanwords. $+ $network $chan
+    .hdel autoshunwords. $+ $network $chan
   }
   .-
   .Add Auto-Ban Word:{
     var %w = $?="Add wildcard word. Like *ban*me*now*"
-    var %asw = $hget(autoshunwords. $+ $network,$chan) 
+    var %asw = $hget(autobanwords. $+ $network,$chan) 
     if (%w == $null) { echo -tias * Error: Enter word next time! | halt }
-    hadd -m autobanwords. $+ $network $chan %asw %w
+    echo -tai $chan * Will now auto ban users for words: %asw %w
+    hadd -m autobanwords. $+ $network $chan $remove(%asw,%w) %w
   }
   .Remove Auto-Ban Word:{
     var %w = $?="Word to remove, must contain wildcard chars (* and ? etc) "
     var %asw = $hget(autobanwords. $+ $network,$chan) 
     if (%w == $null) { echo -tia * Error: Enter word next time! | halt }
     if ($asw == $null) { echo -tia * Error: Word didn't exist. No auto shun word list! | halt }
-    hadd -m autobanwords. $+ $network $chan $remove(%w,%asw)
+    if ($remove(%w,%asw) != $null) { hadd -m autobanwords. $+ $network $chan $remove(%w,%asw) }
+    if ($remove(%w,%asw) == $null) { hdel autobanwords. $+ $network $chan }
     echo -tias * Will autoban people who say words: $hget(autobanwords. $+ $network $chan)
   }
+  .-
   .Ban Words List:{
-    var %w = $hget(autobanwords. $+ $network $chan)
-    if (%w != $null) { echo -tis * Will autoshun people who say words: $hget(autobanwords. $+ $network $chan) }
-    if (%w == $null) { Echo * There are no autoshun words for $chan on $network }
+    var %w = $hget(autobanwords. $+ $network,$chan)
+    if (%w != $null) { echo -tia * Will autoban people who say words: $hget(autobanwords. $+ $network,$chan) }
+    if (%w == $null) { echo -tia * There are no autoban words for $chan on $network }
   }
   .Clear Ban Words List:{
     echo -tia * Removed autoban words for $chan
-    hdel autobanwords. $+ $network $chan
+    .hdel autobanwords. $+ $network $chan
   }
   .-
   .blockwords on:{ hadd -m ignorewords. $+ $network $chan 1 }
@@ -942,7 +946,7 @@ menu channel {
     var %a = 1 | var %b = $nick($chan,0)
     while (%a <= %b) {
       var %nick = $nick($chan,%a)
-      if ($karma(%nick,$network) >= 0.05) && ($karma(%nick,$network) < $goodkarma) {
+      if ($karma(%nick,$network) > 0) && ($karma(%nick,$network) < $goodkarma) {
         echo -ti $chan * Karmic %nick $karma(%nick,$network) -> $calc($karma(%nick,$network) + $goodkarma)
         setkarma $nick($chan,%a) $goodkarma
       }

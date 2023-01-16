@@ -99,10 +99,12 @@ alias pollchanend {
   if (%yes == $null) { var %yes = 0 }
   if (%no == $null) { var %no = 0 }
   msg $2 09,0114[09 Poll Ended 14]00 Total votes: %total [Yes: %yes $+ /No: %no $+ ]
-  .hdel pollchan.total. $+ $network $chan
-  .hdel pollchan.totalyes. $+ $network $chan
-  .hdel pollchan.totalno. $+ $network $chan
-  .hdel pollchan. $+ $network $chan
+  .hdel pollchan.total. $+ $1 $2
+  .hdel pollchan.totalyes. $+ $1 $2
+  .hdel pollchan.totalno. $+ $1 $2
+  .hdel pollchan. $+ $1 $2
+  .hdel -w pollchan.yes. $+ $network $+ . $+ $chan *
+  .hdel -w pollchan.no. $+ $network $+ . $+ $chan *
   .timerpoll.* $+ $2 $+ * off
 }
 
@@ -185,9 +187,32 @@ alias isfriend {
   if ($hget(friend,$1) == 0) { return 0 }
 }
 
-on ^*:text:*:*:{
-  if ($1 == !bang) || ($1 == !shop) || ($1 == !reload) && ($hget(ignoreducks. $+ $network,$chan) == 1) { halt }
-  if ( isin $1-) && (Duck isin $nick) && ($hget(ignoreducks. $+ $network,$chan) == 1) { halt }
+on ^*:text:*:#:{
+  if ($hget(autoshunwords. $+ $network,$chan) != $null) && ($karma($nick,$network) < $goodkarma) {
+    var %a = 1 | var %b = $gettok($hget(autoshunwords. $+ $network,$chan),0,32)
+    while (%a <= %b) {
+      if ($gettok($hget(autoshunwords. $+ $network,$chan),%a,32) iswm $1-) {
+        echo -ti $chan * Auto shun word $gettok($hget(autoshunwords. $+ $network,$chan),%a,32) detected. Applying shun.
+        shun $nick 36h flood/spam
+        halt
+      }
+      inc %a
+    }
+  }
+  if ($hget(autobanwords. $+ $network,$chan) != $null) && ($karma($nick,$network) < $goodkarma) {
+    var %a = 1 | var %b = $gettok($hget(autoshunwords. $+ $network,$chan),0,32)
+    while (%a <= %b) {
+      if ($gettok($hget(autoshunwords. $+ $network,$chan),%a,32) iswm $1-) {
+        echo -ti $chan * Auto ban word $gettok($hget(autoshunwords. $+ $network,$chan),%a,32) detected. Applying ban.
+        if ($network == freenode) { cs quiet $chan +24h $address($nick,4) | halt }
+        if ($network != freenode) { mode $chan +b $address($nick,4) | halt }
+        halt
+      }
+      inc %a
+    }
+  }
+  ;if ($1 == !bang) || ($1 == !shop) || ($1 == !reload) && ($hget(ignoreducks. $+ $network,$chan) == 1) { halt }
+  ;if ( isin $1-) && (Duck isin $nick) && ($hget(ignoreducks. $+ $network,$chan) == 1) { halt }
   if ($hget(ignorebk. $+ $network,$chan) == 1) && ($karma($nick,$network) < $goodkarma) { halt }
   kstream $chan 4<15 $+ $nick $+ 4:14 $+ $karma($nick,$network) $+ 4>0 $1-
   hinc -mu604800 msg. $+ $network $nick 0.1
@@ -227,7 +252,7 @@ on ^*:text:*:*:{
         hdel recenttalk. $network $+ . $+ $chan $nick
       }
       if ($hget(kbflood. $+ $network,$chan) == 1) {
-        raw -q kick $chan $nick $+ $lf $+ mode $chan +b $address($nick,4)
+        mode $chan +b $address($nick,4) | kick $chan $nick
         hdel recenttalk. $network $+ . $+ $chan $nick
       }
     }
@@ -241,7 +266,6 @@ on ^*:text:*:*:{
         if ($1 == y) || ($1 == yes) {
           if ($hget(yes. $+ $network $+ . $+ $chan,$address($nick,4)) != $null) { notice $nick You already voted. | halt }
           if ($hget(no. $+ $network $+ . $+ $chan,$address($nick,4)) != $null) { notice $nick You already voted. | halt }
-
           hinc -mu300 pollchan.total. $+ $network $chan 1
           hinc -mu300 pollchan.totalyes. $+ $network $chan 1
           hadd -mu300 yes. $+ $network $+ . $+ $chan $address($nick,4) 1
@@ -688,39 +712,99 @@ menu channel {
   .botmode on:{ hadd -m botmode. $+ $network $chan 1 | echo -ta Botmode for $chan on }
   .botmode off:{ hdel botmode. $+ $network $chan 1 | echo -ta Botmode for $chan on }
   -
-  Shit List
-  .autokb on join (karmic):{
+  Karmic Autos
+  .Auto Kickban Users (< $+ $goodkarma $+ ) ON:{
     var %k = $?="Minimal karma (anything equal or less is kickbanned)"
     if (%k == $null) { var %k = $goodkarma }
     hadd -m autokb. $+ $network $chan %k
     echo -ta Will kickban everybody who does not match minimal karmic score
   }
-  .autokb off:{
+  .Auto Kickban Users (< $+ $goodkarma $+ ) OFF:{
     hadd -m autokb. $+ $network $chan %k
     echo -ta Will no longer kickban people.
   }
   -
-  Block Words
+  Punish Word Phrases
+  .Add Auto-Shun Word:{
+    var %w = $?="Add wildcard word. Like *ban*me*now*"
+    var %asw = $hget(autoshunwords. $+ $network,$chan) 
+    if (%w == $null) { echo -tias * Error: Enter word next time! | halt }
+    hadd -m autoshunwords. $+ $network $chan %asw %w
+  }
+  .Remove Auto-Shun Word:{
+    var %w = $?="Word to remove, must contain wildcard chars (* and ? etc) "
+    var %asw = $hget(autoshunwords. $+ $network,$chan) 
+    if (%w == $null) { echo -tias * Error: Enter word next time! | halt }
+    if ($asw == $null) { echo -tias * Error: Word didn't exist. No auto shun word list! | halt }
+    hadd -m autoshunwords. $+ $network $chan $remove(%w,%asw)
+    echo -tias * Will autoshun people who say words: $hget(autoshunwords. $+ $network $chan)
+  }
+  .Shun Words List:{
+    var %w = $hget(autoshunwords. $+ $network $chan)
+    if (%w != $null) { echo -tias * Will autoshun people who say words: $hget(autoshunwords. $+ $network $chan) }
+    if (%w == $null) { Echo * There are no autoshun words for $chan on $network }
+  }
+  .Clear Shun Words List:{
+    echo -tia * Removed autoshun words for $chan
+    hdel autobanwords. $+ $network $chan
+  }
+  .-
+  .Add Auto-Ban Word:{
+    var %w = $?="Add wildcard word. Like *ban*me*now*"
+    var %asw = $hget(autoshunwords. $+ $network,$chan) 
+    if (%w == $null) { echo -tias * Error: Enter word next time! | halt }
+    hadd -m autobanwords. $+ $network $chan %asw %w
+  }
+  .Remove Auto-Ban Word:{
+    var %w = $?="Word to remove, must contain wildcard chars (* and ? etc) "
+    var %asw = $hget(autobanwords. $+ $network,$chan) 
+    if (%w == $null) { echo -tia * Error: Enter word next time! | halt }
+    if ($asw == $null) { echo -tia * Error: Word didn't exist. No auto shun word list! | halt }
+    hadd -m autobanwords. $+ $network $chan $remove(%w,%asw)
+    echo -tias * Will autoban people who say words: $hget(autobanwords. $+ $network $chan)
+  }
+  .Ban Words List:{
+    var %w = $hget(autobanwords. $+ $network $chan)
+    if (%w != $null) { echo -tis * Will autoshun people who say words: $hget(autobanwords. $+ $network $chan) }
+    if (%w == $null) { Echo * There are no autoshun words for $chan on $network }
+  }
+  .Clear Ban Words List:{
+    echo -tia * Removed autoban words for $chan
+    hdel autobanwords. $+ $network $chan
+  }
+  .-
   .blockwords on:{ hadd -m ignorewords. $+ $network $chan 1 }
   .blockwords off:{ hdel ignorewords. $+ $network $chan }
+
   -
-  Ignore Karmic Stuff
-  .ignore min karma:{ hadd -m ibk. $+ $network $chan 1 }
-  .unignore min karma:{ hdel ibk. $+ $network $chan }
+  Karmic Ignore Stuff (< $+ $goodkarma $+ )
+  .Ignore All (< $+ $goodkarma $+ ):{ hadd -m ibk. $+ $network $chan 1 }
+  .Unignore All (< $+ $goodkarma $+ ):{ hdel ibk. $+ $network $chan }
   .-
-  .ignore joins min karma:{ hadd -m ij. $+ $network $chan 1 }  
-  .unignore joins min karma:{ hdel ij. $+ $network $chan }
+  .Ignore Joins (< $+ $goodkarma $+ ):{ hadd -m ij. $+ $network $chan 1 | echo -tias * Ignoring joins for users with less than $goodkarma }  
+  .Unignore Joins (< $+ $goodkarma $+ ):{ hdel ij. $+ $network $chan | echo -tias * Unignoring joins for users with less than $goodkarma - You'll see more joins! }
   .-
-  .ignore quits min karma:{ hadd -m iq $network 1 }
-  .unignore quits min karma:{ hdel iq $network }
-  -
+  .Global Ignore Quits (< $+ $goodkarma $+ ):{ hadd -m iq $network 1 | echo -tias * Ignoring quits for users with less than $goodkarma }
+  .Global Unignore Quits (< $+ $goodkarma $+ ):{ hdel iq $network | echo -tias * Unignoring quits for users with less than $goodkarma }
+  .-
   .Ignore Ducks:{ hadd -m ignoreducks. $+ $network $chan 1 }
   .Unignore Ducks:{ hdel ignoreducks. $+ $network $chan }
   .-
-  .Ignore No-Good Karma:{ hadd -m ignorebk. $+ $network $chan 1 }
-  .Unignore No-Good Karma:{ hdel ignorebk. $+ $network $chan }
+  .Ignore No-Good Karma:{ hadd -m ignorebk. $+ $network $chan 1 | echo -tias * Ignoring quits for users with less than $goodkarma }
+  .Unignore No-Good Karma:{ hdel ignorebk. $+ $network $chan | echo -tias * Unignoring quits for users with less than $goodkarma }
   -
-  +mv and Auto Voice Good Karma Mode:{
+  Anti Flood
+  .Auto Shun Flooders ON:{ hadd -m shunflood. $+ $network $chan 1 | echo -tais Set $channel to shun flooders if theyre new and have no karma }
+  .Auto Shun Flooders OFF:{ hdel shunflood. $+ $network $chan | echo -tais Unset $channel to shun flooders if theyre new and have no karma }
+  .-
+  .Auto Muteban Flooders ON:{ hadd -m banflood. $+ $network $chan 1 | echo -tais Set $channel to mute/ban flooders if theyre new and have no karma }
+  .Auto Muteban Flooders OFF:{ hdel banflood. $+ $network $chan | echo -tais Unset $channel to mute/ban flooders if theyre new and have no karma }
+  .-
+  .Auto Kickban Flooders ON:{ hadd -m kbflood. $+ $network $chan 1 | echo -tais Set $channel to kick ban flooders if theyre new and have no karma }
+  .Auto Kickban Flooders OFF:{ hdel kbflood. $+ $network $chan | echo -tais Unset $channel to kick ban flooders if theyre new and have no karma }
+  -
+  Karmic Channel
+  .Channel Emergency Mode:{
     mode $chan +m
     if ($network == freenode) { mode $chan +U }
     automode +v on
@@ -734,39 +818,137 @@ menu channel {
       inc %a
     }
   }
-  -
-  Unmoderate after 1h:{ timerunmod. $+ $network $+ . $+ $chan 1 3600 mode $chan -m }
-  Umoderate after 3hours:{ timerunmod. $+ $network $+ . $+ $chan 1 10800 mode $chan -m }
-  Umoderatre after 6hours:{ timerunmod. $+ $network $+ . $+ $chan 1 21600 mode $chan -m }
-  -
-  mass-modes:{
-    var %m = $?="mode? Example: +o"
-    var %k = $?="karma? Example: 0.1, Leave empty for everybody"
-    if (%k == $null) { var %k = 0 }
+  .-
+  .Unmoderate after 1h:{ timerunmod. $+ $network $+ . $+ $chan 1 3600 mode $chan -m }
+  .Umoderate after 3hours:{ timerunmod. $+ $network $+ . $+ $chan 1 10800 mode $chan -m }
+  .Umoderatre after 6hours:{ timerunmod. $+ $network $+ . $+ $chan 1 21600 mode $chan -m }
+  .-
+  .Owner Users (>= $+ $goodkarma):{
     var %a = 1 | var %b = $nick($chan,0)
     while (%a <= %b) {
-      var %n = $nick($chan,%a)
-      if ($karma(%n,$network) >= %k) { mode $chan %m %n }
+      var %nick = $nick($chan,%a)
+      if ($karma(%nick,$network) >= $goodkarma) {
+        mode $chan +q %nick
+      }
       inc %a
     }
   }
-  -
-  Anti Flood
-  .Auto Shun Flooders ON:{ hadd -m shunflood. $+ $network $chan 1 | echo -tais Set $channel to shun flooders if theyre new and have no karma }
-  .Auto Shun Flooders OFF:{ hdel shunflood. $+ $network $chan | echo -tais Unset $channel to shun flooders if theyre new and have no karma }
   .-
-  .Auto Muteban Flooders ON:{ hadd -m banflood. $+ $network $chan 1 | echo -tais Set $channel to mute/ban flooders if theyre new and have no karma }
-  .Auto Muteban Flooders OFF:{ hdel banflood. $+ $network $chan | echo -tais Unset $channel to mute/ban flooders if theyre new and have no karma }
+  .DeOwner Users (< $+ $goodkarma):{
+    var %a = 1 | var %b = $nick($chan,0)
+    while (%a <= %b) {
+      var %nick = $nick($chan,%a)
+      if ($karma(%nick,$network) < $goodkarma) && (%nick !isop $chan) && (%nick ishop $chan) {
+        mode $chan -q %nick
+      }
+      inc %a
+    }
+  }
   .-
-  .Auto Kickban Flooders ON:{ hadd -m kbflood. $+ $network $chan 1 | echo -tais Set $channel to kick ban flooders if theyre new and have no karma }
-  .Auto Kickban Flooders OFF:{ hdel kbflood. $+ $network $chan | echo -tais Unset $channel to kick ban flooders if theyre new and have no karma }
-  -
-  .Set Acceptable Karma:{
+  .Admin Users (>= $+ $goodkarma):{
+    var %a = 1 | var %b = $nick($chan,0)
+    while (%a <= %b) {
+      var %nick = $nick($chan,%a)
+      if ($karma(%nick,$network) >= $goodkarma) {
+        mode $chan +a %nick
+      }
+      inc %a
+    }
+  }
+  .-
+  .DeAdmin Users (< $+ $goodkarma):{
+    var %a = 1 | var %b = $nick($chan,0)
+    while (%a <= %b) {
+      var %nick = $nick($chan,%a)
+      if ($karma(%nick,$network) < $goodkarma) && (%nick !isop $chan) && (%nick ishop $chan) {
+        mode $chan -a %nick
+      }
+      inc %a
+    }
+  }
+  .-
+  .Op Users (>= $+ $goodkarma):{
+    var %a = 1 | var %b = $nick($chan,0)
+    while (%a <= %b) {
+      var %nick = $nick($chan,%a)
+      if ($karma(%nick,$network) >= $goodkarma) {
+        mode $chan +o %nick
+      }
+      inc %a
+    }
+  }
+  .-
+  .DeHOP Users (< $+ $goodkarma $+ ):{
+    var %a = 1 | var %b = $nick($chan,0)
+    while (%a <= %b) {
+      var %nick = $nick($chan,%a)
+      if ($karma(%nick,$network) < $goodkarma) && (%nick !isop $chan) && (%nick ishop $chan) {
+        mode $chan -h %nick
+      }
+      inc %a
+    }
+  }
+  .-
+  .HOP Users (>= $+ $goodkarma $+ ):{
+    var %a = 1 | var %b = $nick($chan,0)
+    while (%a <= %b) {
+      var %nick = $nick($chan,%a)
+      if ($karma(%nick,$network) >= $goodkarma) {
+        mode $chan +h %nick
+      }
+      inc %a
+    }
+  }
+  .-
+  .DeOP Users (< $+ $goodkarma $+ ):{
+    var %a = 1 | var %b = $nick($chan,0)
+    while (%a <= %b) {
+      var %nick = $nick($chan,%a)
+      if ($karma(%nick,$network) < $goodkarma) && (%nick !isop $chan) && (%nick ishop $chan) {
+        mode $chan -v %nick
+      }
+      inc %a
+    }
+  }
+  .-
+  .Voice Users (>= $+ $goodkarma $+ ):{
+    var %a = 1 | var %b = $nick($chan,0)
+    while (%a <= %b) {
+      var %nick = $nick($chan,%a)
+      if ($karma(%nick,$network) < $goodkarma) && (%nick !isop $chan) && (%nick ishop $chan) {
+        mode $chan +v %nick
+      }
+      inc %a
+    }
+  }
+  .Devoice Users (< $+ $goodkarma $+ ):{
+    var %a = 1 | var %b = $nick($chan,0)
+    while (%a <= %b) {
+      var %nick = $nick($chan,%a)
+      if ($karma(%nick,$network) < $goodkarma) && (%nick !isop $chan) && (%nick ishop $chan) {
+        mode $chan -v %nick
+      }
+      inc %a
+    }
+  }
+  Karmic Settings
+  .Set Good/Acceptable Karma:{
     var %gk = $goodkarma
     goodkarma $?=" Score? IE: 0.5 - Leave blank for default "
   }
-  .See Acceptable Karma:{ echo -ta Karma Score: $goodkarma }
-
+  .Show Good/Acceptable Karma:{ echo -ta Good Karma Score: $goodkarma (Users not matching at minimum are considered non-authentic }
+  .-
+  .Quick Set All Active Users Karma:{
+    var %a = 1 | var %b = $nick($chan,0)
+    while (%a <= %b) {
+      var %nick = $nick($chan,%a)
+      if ($karma(%nick,$network) >= 0.05) && ($karma(%nick,$network) < $goodkarma) {
+        echo -ti $chan * Karmic %nick $karma(%nick,$network) -> $calc($karma(%nick,$network) + $goodkarma)
+        setkarma $nick($chan,%a) $goodkarma
+      }
+      inc %a
+    }
+  }
 }
 menu nicklist {
   whois:{

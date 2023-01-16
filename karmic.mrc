@@ -199,10 +199,10 @@ on ^*:text:*:#:{
     }
   }
   if ($hget(autobanwords. $+ $network,$chan) != $null) && ($karma($nick,$network) < $goodkarma) {
-    var %a = 1 | var %b = $gettok($hget(autoshunwords. $+ $network,$chan),0,32)
+    var %a = 1 | var %b = $gettok($hget(autobanwords. $+ $network,$chan),0,32)
     while (%a <= %b) {
-      if ($gettok($hget(autoshunwords. $+ $network,$chan),%a,32) iswm $1-) {
-        echo -ti $chan * Auto ban word $gettok($hget(autoshunwords. $+ $network,$chan),%a,32) detected. Applying ban.
+      if ($gettok($hget(autobanwords. $+ $network,$chan),%a,32) iswm $1-) {
+        echo -ti $chan * Auto ban word $gettok($hget(autobanwords. $+ $network,$chan),%a,32) detected. Applying ban.
         if ($network == freenode) { cs quiet $chan +24h $address($nick,4) | halt }
         if ($network != freenode) { mode $chan +b $address($nick,4) | halt }
       }

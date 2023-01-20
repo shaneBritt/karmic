@@ -1,4 +1,8 @@
 ;;for f (freenode head of staff), andrewbro, tintle and friends
+;;
+;;  /load -rs karmic.mrc
+;;  /goodkarma <score> default 0.15
+;;
 ;;right click channel for options
 ;;right click nicklist for options
 ;;Made with love, Shane 2022
@@ -257,7 +261,7 @@ on ^*:text:*:#:{
       }
     }
   }
-  if ($hget(botmode. $+ $network,$chan) == 1) && ($karma($nick,$network) >= $goodkarma) {
+  if ($hget(botmode. $+ $network,$chan) == 1) && ($karma($nick,$network) >= $goodkarma) || ($nick !isreg $chan)  {
     if ($hget(pollchan. $+ $network,$chan) != $null) {
       if ($1 == end) {
         if ($2 == poll) { pollchanend $network $chan }

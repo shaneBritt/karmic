@@ -8,6 +8,7 @@ on *:connect:{
   .timersavekarma 0 900 save.karma
   config.set
 }
+
 on *:start:{
   config.set
   echo -ts 48[14Karmic48]60: Keepin' it real since $date(yyyy)
@@ -33,6 +34,7 @@ alias hdel2 {
 }
 
 on ^*:join:#:{
+  hinc -mu86400 joins. $+ $network $+ . $+ $chan $date(mm/dd/yy) 1
   kstream $nick $+ : $+ $karma($nick,$network) joined $chan
   .timerseenuserscan. $+ $network $+ . $+ $chan 1 $r(300,600) seenuserscan $chan
   hadd -mu300 recentjoin. $+ $network $+ . $+ $chan $nick 1
@@ -128,7 +130,7 @@ alias unbanme {
   if ($me isop $1) {
     var %a = 1 | var %b = $banlist($chan,0) | var %c = 0
     while (%a <= %b) {
-      if ($banlist($chan,%a) iswm $ial($me)) { mode $chan -b $banlist($chan,%a) | inc %c }
+      if ($banlist($chan,%a) iswm $ial($me)) { mmode $chan -b $banlist($chan,%a) | inc %c }
       inc %a
     }
   }
@@ -186,12 +188,26 @@ alias rem.friend {
   writeini friends.ini $1 0
 }
 alias isfriend {
-  if ($hget(friend,$1) != $null) { return 1 }
+  if ($hget(friend,$1) == 1) { return 1 }
   if ($hget(friend,$1) == $null) { return 0 }
   if ($hget(friend,$1) == 0) { return 0 }
 }
 
 on ^*:text:*:#:{
+  hinc -mu86400 msg. $+ $network $+ . $+ $chan $date(mm/dd/yy) 1
+  hinc -mu3 recentmsg. $+ $chan $md5($strip($lower($1-))) 1
+  if ($hget(recentmsg. $+ chan,$md5($strip($lower($1-)))) == 3) && ($hget(recentjoin. $+ $network $+ . $+ $chan,$nick) != $null) {
+    if ($karma($nick,$network) < $goodkarma) {
+      if ($hget(shunflood. $+ $network,$chan) == 1) {
+        shun $nick 6h flood/spam
+        hdel2 recenttalk. $network $+ . $+ $chan $nick
+      }
+      if ($hget(kbflood. $+ $network,$chan) == 1) {
+        mode $chan +b $address($nick,2) | kick $chan $nick
+        hdel2 recenttalk. $network $+ . $+ $chan $nick
+      }
+    }
+  }
   if ($hget(autoshunwords. $+ $network,$chan) != $null) && ($karma($nick,$network) < $goodkarma) {
     var %a = 1 | var %b = $gettok($hget(autoshunwords. $+ $network,$chan),0,32)
     while (%a <= %b) {
@@ -261,27 +277,29 @@ on ^*:text:*:#:{
       }
     }
   }
-  if ($hget(botmode. $+ $network,$chan) == 1) && ($karma($nick,$network) >= $goodkarma) || ($nick !isreg $chan)  {
-    if ($hget(pollchan. $+ $network,$chan) != $null) {
-      if ($1 == end) {
-        if ($2 == poll) { pollchanend $network $chan }
-      }
-      if ($1 == y) || ($1 == yes) || ($1 == 1) || ($1 == n) || ($1 == no) {
-        if ($1 == y) || ($1 == yes) {
-          if ($hget(yes. $+ $network $+ . $+ $chan,$address($nick,4)) != $null) { notice $nick You already voted. | halt }
-          if ($hget(no. $+ $network $+ . $+ $chan,$address($nick,4)) != $null) { notice $nick You already voted. | halt }
-          hinc -mu300 pollchan.total. $+ $network $chan 1
-          hinc -mu300 pollchan.totalyes. $+ $network $chan 1
-          hadd -mu300 yes. $+ $network $+ . $+ $chan $address($nick,4) 1
-          echo -t $chan Vote for yes registered
+  if ($hget(botmode. $+ $network,$chan) == 1) {
+    if ($nick !isreg $chan) || ($karma($nick,$network) >= $goodkarma) {
+      if ($hget(pollchan. $+ $network,$chan) != $null) {
+        if ($1 == end) {
+          if ($2 == poll) { pollchanend $network $chan }
         }
-        if ($1 == n) || ($1 == no) {
-          if ($hget(yes. $+ $network $+ . $+ $chan,$address($nick,4)) != $null) { notice $nick You already voted. | halt }
-          if ($hget(no. $+ $network $+ . $+ $chan,$address($nick,4)) != $null) { notice $nick You already voted. | halt }
-          hinc -mu300 pollchan.total. $+ $network $chan 1
-          hinc -mu300 pollchan.totalno. $+ $network $chan 1
-          hadd -mu300 no. $+ $network $+ . $+ $chan $address($nick,4) 1
-          echo -t $chan Vote for yes registered
+        if ($1 == y) || ($1 == yes) || ($1 == 1) || ($1 == n) || ($1 == no) {
+          if ($1 == y) || ($1 == yes) {
+            if ($hget(yes. $+ $network $+ . $+ $chan,$address($nick,4)) != $null) { notice $nick You already voted. | halt }
+            if ($hget(no. $+ $network $+ . $+ $chan,$address($nick,4)) != $null) { notice $nick You already voted. | halt }
+            hinc -mu300 pollchan.total. $+ $network $chan 1
+            hinc -mu300 pollchan.totalyes. $+ $network $chan 1
+            hadd -mu300 yes. $+ $network $+ . $+ $chan $address($nick,4) 1
+            echo -t $chan Vote for yes registered
+          }
+          if ($1 == n) || ($1 == no) {
+            if ($hget(yes. $+ $network $+ . $+ $chan,$address($nick,4)) != $null) { notice $nick You already voted. | halt }
+            if ($hget(no. $+ $network $+ . $+ $chan,$address($nick,4)) != $null) { notice $nick You already voted. | halt }
+            hinc -mu300 pollchan.total. $+ $network $chan 1
+            hinc -mu300 pollchan.totalno. $+ $network $chan 1
+            hadd -mu300 no. $+ $network $+ . $+ $chan $address($nick,4) 1
+            echo -t $chan Vote for yes registered
+          }
         }
       }
       if ($1 == karma) && ($2 != $null) {
@@ -319,7 +337,7 @@ on ^*:text:*:#:{
         .msg $chan Registered $chan problem. A reminder prompt will be given for users to solve it.
         .msg $chan There are $lines(problems. $+ $network $+  $md5($chan)) pending
       }
-      if ($1 == suggestion) && ($4 != $null) {
+      if ($1 == suggestion) || ($1 == solution) && ($4 != $null) {
         var %f = problems. $+ $1 $+  $md5($2)
         if (%f == 0) {  msg $chan  $nick $+ : there are no registered problems. Say "problem some information here" }
         write solutions. $+ $network $+ $md5($chan) $strip($2-)
@@ -484,7 +502,7 @@ alias echonick {
 
 alias modeifgood {
   ;;modeifgood nick chan +o
-  if ($hget($network $+ .nsg,$1) != $null) || ($karma($1,$network) >= $goodkarma) {  mode $2 $3 $1  }
+  if ($hget($network $+ .nsg,$1) != $null) || ($karma($1,$network) >= $goodkarma) {  mmode$2 $3 $1  }
 }
 
 alias wtp {
@@ -596,7 +614,19 @@ alias karma {
   var %total = $calc(%total + 0 + $hget(devoiced. $+ $2,$1))
   var %total = $calc(%total + 0 + $hget(kicked. $+ $2,$1))
   ;if ($hget(setkarma. $+ $2,$1) != $null) { var $total = $calc($hget(setkarma. $+ $2,$1) + 0 + %total) }
-  return $calc($calc(%total * 0.01) + $hget(setkarma. $+ $2,$1))
+  var %return = $calc($calc(%total * 0.01) + $hget(setkarma. $+ $2,$1))
+  return %return
+}
+
+alias ekarma {
+  scid -a ekarma2 $1
+  if ($hget(ekarma,$1) != $null) {
+    .timer 0 0 hdel ekarma $1
+    return $hget(ekarma,$1)
+  }
+}
+alias ekarma2 {
+  if ($karma($1,$network) >= $goodkarma) { hinc -mu3 ekarma $1 $karma($1,$network) }
 }
 
 alias setkarma { hadd -mu604800 setkarma. $+ $network $1 $2 }
@@ -652,6 +682,19 @@ alias announce {
   }
 }
 
+alias mmode {
+  var %chan = $1
+  var %mode = $2
+  var %nick = $3
+  hadd -mu3 mode nicks %nick $hget(mode,nicks)
+  .timermode. $+ $network $+ . $+ %chan 1 1 mode %chan %mode %nick 
+  if ($gettok($hget(mode,nicks),0,32) == $modespl) {
+    mode %chan $left(%mode,1) $+ $str($right(%mode,1),$modespl) $hget(mode,nicks)
+    hdel mode nicks
+    .timermode. $+ $network $+ . $+ %chan off
+  }
+}
+
 on *:input:#:{
   if ($hget(lastspoke. $+ $network,$chan) == $null) {
     if ($hget(lastspoke. $+ $network,$chan) != $null) { echo -ta You last spoke $hget(lastspoke. $+ $network,$chan) }
@@ -678,7 +721,7 @@ on *:input:#:{
 }
 
 menu channel {
-  Community
+  Community Annoncements (Every 3 days)
   .$chan Announcements:{
     var %g = $?="Announce $chan community text every 24hours to say:"
     if (%g == $null) {
@@ -691,7 +734,7 @@ menu channel {
     .timercommunity. $+ $network $+ . $+ $chan off
   }
   Greetings
-  .Greet Web-users:{
+  .Greet Web-users for freenode:{
     var %g = $?="Greet new web-* users with what message?"
     if (%g == $null) { var %g = Welcome to $chan $+ ! You are using a nickname that is non-authentic. /nick <nickname> and enjoy your stay. Please remember we do not always answer right away, so stick around for a bit. }
     hadd -m webgreet. $+ $network $chan %g
@@ -704,19 +747,11 @@ menu channel {
     echo -ta Set greeting for ALL users: %g
   }
   -
-  Auto Modes (Join)
-  .Set Auto Mode +o/a/q:{
-    automode $?="+o ? +q ? +v ?" on
-  }
-  .-
-  .automode remove:{ automode off }
-  .automode status:{ automode }
-  -
-  Robot Mode
-  .botmode on:{ hadd -m botmode. $+ $network $chan 0 | echo -ta Botmode for $chan on }
-  .botmode off:{ hdel2 botmode. $+ $network $chan 1 | echo -ta Botmode for $chan off }
-  -
   Karmic Autos
+  .Robot Mode
+  ..botmode on:{ hadd -m botmode. $+ $network $chan 1 | echo -ta Botmode for $chan on }
+  ..botmode off:{ hdel2 botmode. $+ $network $chan 0 | echo -ta Botmode for $chan off }
+  .-
   .Auto Kickban Users (< $+ $goodkarma $+ ) ON:{
     var %k = $?="Minimal karma (anything equal or less is kickbanned)"
     if (%k == $null) { var %k = $goodkarma }
@@ -727,16 +762,25 @@ menu channel {
     .hdel2 autokb. $+ $network $chan 
     echo -ta Will no longer kickban people.
   }
+  .-
+  .Auto Modes (>= $+ $goodkarma $+ )
+  ..Set Auto Mode +o/a/q:{
+    automode $?="+o ? +q ? +v ?" on
+  }
+  .-
+  ..automode remove:{ automode off }
+  ..automode status:{ automode }
   -
   Punish Word Phrases
-  .Add Auto-Shun Word:{
+  .Auto Shun
+  ..Add Auto-Shun Word:{
     var %w = $?="Add wildcard word. Like *ban*me*now*"
     var %asw = $hget(autoshunwords. $+ $network,$chan) 
     if (%w == $null) { echo -tias * Error: Enter word next time! | halt }
     echo -tai $chan * Will now auto ban users for words: %asw %w
     hadd -m autoshunwords. $+ $network $chan $remove(%asw,%w) %w
   }
-  .Remove Auto-Shun Word:{
+  ..Remove Auto-Shun Word:{
     var %w = $?="Word to remove, must contain wildcard chars (* and ? etc) "
     var %asw = $hget(autoshunwords. $+ $network,$chan) 
     if (%w == $null) { echo -tia * Error: Enter word next time! | halt }
@@ -745,25 +789,26 @@ menu channel {
     if ($remove(%w,%asw) == $null) { hdel2 autoshunwords. $+ $network $chan }
     echo -tias * Will autoshun people who say words: $hget(autoshunwords. $+ $network $chan)
   }
-  .-
-  .Shun Words List:{
+  ..-
+  ..Shun Words List:{
     var %w = $hget(autoshunwords. $+ $network,$chan)
     if (%w != $null) { echo -tia * Will autoshun people who say words: $hget(autoshunwords. $+ $network,$chan) }
     if (%w == $null) { echo -tia * There are no autoshun words for $chan on $network }
   }
-  .Clear Shun Words List:{
+  ..Clear Shun Words List:{
     echo -tia * Removed autoshun words for $chan
     .hdel2 autoshunwords. $+ $network $chan
   }
-  .-
-  .Add Auto-Ban Word:{
+  ..-
+  .Auto Ban (+b)
+  ..Add Auto-Ban Word:{
     var %w = $?="Add wildcard word. Like *ban*me*now*"
     var %asw = $hget(autobanwords. $+ $network,$chan) 
     if (%w == $null) { echo -tias * Error: Enter word next time! | halt }
     echo -tai $chan * Will now auto ban users for words: %asw %w
     hadd -m autobanwords. $+ $network $chan $remove(%asw,%w) %w
   }
-  .Remove Auto-Ban Word:{
+  ..Remove Auto-Ban Word:{
     var %w = $?="Word to remove, must contain wildcard chars (* and ? etc) "
     var %asw = $hget(autobanwords. $+ $network,$chan) 
     if (%w == $null) { echo -tia * Error: Enter word next time! | halt }
@@ -772,19 +817,19 @@ menu channel {
     if ($remove(%w,%asw) == $null) { hdel2 autobanwords. $+ $network $chan }
     echo -tias * Will autoban people who say words: $hget(autobanwords. $+ $network $chan)
   }
-  .-
-  .Ban Words List:{
+  ..-
+  ..Ban Words List:{
     var %w = $hget(autobanwords. $+ $network,$chan)
     if (%w != $null) { echo -tia * Will autoban people who say words: $hget(autobanwords. $+ $network,$chan) }
     if (%w == $null) { echo -tia * There are no autoban words for $chan on $network }
   }
-  .Clear Ban Words List:{
+  ..Clear Ban Words List:{
     echo -tia * Removed autoban words for $chan
     .hdel2 autobanwords. $+ $network $chan
   }
-  .-
-  .blockwords on:{ hadd -m ignorewords. $+ $network $chan 1 }
-  .blockwords off:{ hdel2 ignorewords. $+ $network $chan }
+  ..-
+  ..blockwords on:{ hadd -m ignorewords. $+ $network $chan 1 }
+  ..blockwords off:{ hdel2 ignorewords. $+ $network $chan }
 
   -
   Karmic Ignore Stuff (< $+ $goodkarma $+ )
@@ -804,8 +849,8 @@ menu channel {
   .Unignore No-Good Karma:{ hdel2 ignorebk. $+ $network $chan | echo -tias * Unignoring quits for users with less than $goodkarma }
   -
   Anti Flood
-  .Auto Shun Flooders ON:{ hadd -m shunflood. $+ $network $chan 1 | echo -tais Set $channel to shun flooders if theyre new and have no karma }
-  .Auto Shun Flooders OFF:{ hdel2 shunflood. $+ $network $chan | echo -tais Unset $channel to shun flooders if theyre new and have no karma }
+  .Auto Shun Spammers ON:{ hadd -m shunflood. $+ $network $chan 1 | echo -tais Set $channel to shun flooders if theyre new and have no karma }
+  .Auto Shun Spammers OFF:{ hdel2 shunflood. $+ $network $chan | echo -tais Unset $channel to shun flooders if theyre new and have no karma }
   .-
   .Auto Muteban Flooders ON:{ hadd -m banflood. $+ $network $chan 1 | echo -tais Set $channel to mute/ban flooders if theyre new and have no karma }
   .Auto Muteban Flooders OFF:{ hdel2 banflood. $+ $network $chan | echo -tais Unset $channel to mute/ban flooders if theyre new and have no karma }
@@ -821,9 +866,9 @@ menu channel {
     var %a = 1 | var %b = $nick($chan,0)
     while (%a <= %b) {
       var %n = $nick($chan,%a)
+      if ($network == freenode) && (/ isin $ial(%n)) && ($karma(%n,$network) > 0) && ($karma(%n,$network) < $goodkarma) { mmode $chan +v %n }
       if ($karma(%n,$network) >= $goodkarma) {
-        if (%n !isvo $chan) && (%n !isop $chan) && (%n !ishop $chan) { mode $chan +v %n }
-        if ($network == freenode) && (/ isin $ial(%n)) && ($karma(%n,$network) > 0) && ($karma(%n,$network) < $goodkarma) { mode $chan +v %n }
+        if (%n !isvo $chan) && (%n !isop $chan) && (%n !ishop $chan) { mmode $chan +v %n }
       }
       inc %a
     }
@@ -838,7 +883,7 @@ menu channel {
     while (%a <= %b) {
       var %nick = $nick($chan,%a)
       if ($karma(%nick,$network) >= $goodkarma) {
-        mode $chan +q %nick
+        mmode $chan +q %nick
       }
       inc %a
     }
@@ -849,7 +894,7 @@ menu channel {
     while (%a <= %b) {
       var %nick = $nick($chan,%a)
       if ($karma(%nick,$network) < $goodkarma) && (%nick !isop $chan) && (%nick ishop $chan) {
-        mode $chan -q %nick
+        mmode $chan -q %nick
       }
       inc %a
     }
@@ -860,7 +905,7 @@ menu channel {
     while (%a <= %b) {
       var %nick = $nick($chan,%a)
       if ($karma(%nick,$network) >= $goodkarma) {
-        mode $chan +a %nick
+        mmode $chan +a %nick
       }
       inc %a
     }
@@ -871,7 +916,7 @@ menu channel {
     while (%a <= %b) {
       var %nick = $nick($chan,%a)
       if ($karma(%nick,$network) < $goodkarma) && (%nick !isop $chan) && (%nick ishop $chan) {
-        mode $chan -a %nick
+        mmode $chan -a %nick
       }
       inc %a
     }
@@ -882,7 +927,7 @@ menu channel {
     while (%a <= %b) {
       var %nick = $nick($chan,%a)
       if ($karma(%nick,$network) >= $goodkarma) {
-        mode $chan +o %nick
+        mmode $chan +o %nick
       }
       inc %a
     }
@@ -893,7 +938,7 @@ menu channel {
     while (%a <= %b) {
       var %nick = $nick($chan,%a)
       if ($karma(%nick,$network) < $goodkarma) && (%nick !isop $chan) && (%nick ishop $chan) {
-        mode $chan -h %nick
+        mmode $chan -h %nick
       }
       inc %a
     }
@@ -904,7 +949,7 @@ menu channel {
     while (%a <= %b) {
       var %nick = $nick($chan,%a)
       if ($karma(%nick,$network) >= $goodkarma) {
-        mode $chan +h %nick
+        mmode $chan +h %nick
       }
       inc %a
     }
@@ -915,7 +960,7 @@ menu channel {
     while (%a <= %b) {
       var %nick = $nick($chan,%a)
       if ($karma(%nick,$network) < $goodkarma) && (%nick !isop $chan) && (%nick ishop $chan) {
-        mode $chan -v %nick
+        mmode $chan -v %nick
       }
       inc %a
     }
@@ -926,7 +971,7 @@ menu channel {
     while (%a <= %b) {
       var %nick = $nick($chan,%a)
       if ($karma(%nick,$network) < $goodkarma) && (%nick !isop $chan) && (%nick ishop $chan) {
-        mode $chan +v %nick
+        mmode $chan +v %nick
       }
       inc %a
     }
@@ -936,7 +981,7 @@ menu channel {
     while (%a <= %b) {
       var %nick = $nick($chan,%a)
       if ($karma(%nick,$network) < $goodkarma) && (%nick !isop $chan) && (%nick ishop $chan) {
-        mode $chan -v %nick
+        mmode $chan -v %nick
       }
       inc %a
     }
@@ -961,6 +1006,14 @@ menu channel {
   }
 }
 menu nicklist {
+  mmode test:{
+    var %a = 1
+    while ($gettok($snicks,%a,44) != $null) {
+      var %n = $gettok($snicks,%a,44)
+      mmode $chan +o %n
+      inc %a
+    }
+  }
   whois:{
     var %a = 1
     while ($gettok($snicks,%a,44) != $null) {
@@ -984,7 +1037,7 @@ menu nicklist {
     var %a = 1
     while ($gettok($snicks,%a,44) != $null) {
       var %n = $gettok($snicks,%a,44)
-      mode $chan +q %n
+      mmode $chan +q %n
       inc %a
     }
   }
@@ -992,7 +1045,7 @@ menu nicklist {
     var %a = 1
     while ($gettok($snicks,%a,44) != $null) {
       var %n = $gettok($snicks,%a,44)
-      mode $chan -q %n
+      mmode $chan -q %n
       inc %a
     }
   }
@@ -1001,7 +1054,7 @@ menu nicklist {
     var %a = 1
     while ($gettok($snicks,%a,44) != $null) {
       var %n = $gettok($snicks,%a,44)
-      mode $chan +a %n
+      mmode $chan +a %n
       inc %a
     }
   }
@@ -1009,7 +1062,7 @@ menu nicklist {
     var %a = 1
     while ($gettok($snicks,%a,44) != $null) {
       var %n = $gettok($snicks,%a,44)
-      mode $chan -a %n
+      mmode $chan -a %n
       inc %a
     }
   }
@@ -1018,7 +1071,7 @@ menu nicklist {
     var %a = 1
     while ($gettok($snicks,%a,44) != $null) {
       var %n = $gettok($snicks,%a,44)
-      mode $chan +o %n
+      mmode $chan +o %n
       inc %a
     }
   }
@@ -1026,7 +1079,7 @@ menu nicklist {
     var %a = 1
     while ($gettok($snicks,%a,44) != $null) {
       var %n = $gettok($snicks,%a,44)
-      mode $chan -o %n
+      mmode $chan -o %n
       inc %a
     }
   }
@@ -1035,7 +1088,7 @@ menu nicklist {
     var %a = 1
     while ($gettok($snicks,%a,44) != $null) {
       var %n = $gettok($snicks,%a,44)
-      mode $chan +h %n
+      mmode $chan +h %n
       inc %a
     }
   }
@@ -1043,7 +1096,7 @@ menu nicklist {
     var %a = 1
     while ($gettok($snicks,%a,44) != $null) {
       var %n = $gettok($snicks,%a,44)
-      mode $chan -h %n
+      mmode $chan -h %n
       inc %a
     }
   }
@@ -1052,7 +1105,7 @@ menu nicklist {
     var %a = 1
     while ($gettok($snicks,%a,44) != $null) {
       var %n = $gettok($snicks,%a,44)
-      mode $chan +v %n
+      mmode $chan +v %n
       inc %a
     }
   }
@@ -1060,7 +1113,7 @@ menu nicklist {
     var %a = 1
     while ($gettok($snicks,%a,44) != $null) {
       var %n = $gettok($snicks,%a,44)
-      mode $chan -v %n
+      mmode $chan -v %n
       inc %a
     }
   }

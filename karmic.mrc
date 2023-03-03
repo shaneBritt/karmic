@@ -1,4 +1,5 @@
-;;for f (freenode head of staff), andrewbro, tintle and friends
+;;for f (freenode head of staff), andrewbro (root), Duck, Paradox, ComputerTech
+;; Works on any network, oper and regular user
 ;;right click channel for options
 ;;right click nicklist for options
 ;;Made with love, Shane 2022
@@ -15,10 +16,9 @@ on *:start:{
 }
 
 alias config.set {
-  ;;karma that bot considers good in order to consier them authentic (for modes and stuff)
+  ;;karma that bot considers good in order to consiedr them authentic (for modes and stuff)
   ;;edit line below
   var %goodkarma = 0.15
-  var %polltime = 5m (add later: time for poll expirery)
   hadd -m good karma %goodkarma
   ;;turn minutes in to seconds
   hadd -m poll time $calc($replace(%polltime,m,* 60))

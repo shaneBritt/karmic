@@ -1,5 +1,3 @@
-;;for f (freenode head of staff), andrewbro (root), Duck, Paradox, ComputerTech
-;; Works on any network, oper and regular user
 ;;right click channel for options
 ;;right click nicklist for options
 ;;Made with love, Shane 2022
@@ -16,9 +14,11 @@ on *:start:{
 }
 
 alias config.set {
-  ;;karma that bot considers good in order to consiedr them authentic (for modes and stuff)
+  ;;karma that bot considers good in order to consier them authentic (for modes and stuff)
   ;;edit line below
+  window -e @kstream | window -e @tracker
   var %goodkarma = 0.15
+  var %polltime = 5m (add later: time for poll expirery)
   hadd -m good karma %goodkarma
   ;;turn minutes in to seconds
   hadd -m poll time $calc($replace(%polltime,m,* 60))
@@ -194,6 +194,24 @@ alias isfriend {
 }
 
 on ^*:text:*:#:{
+  if ($hget(track. $+ $network,$nick) == 1) {
+    if ($window(@tracker) == $null) { window -e @tracker }
+    echo -ti @tracker $network / $nick > $strip($1-)
+    if ($active != $chan) { echo -ti $network $+ / $+ $chan $nick > $strip($1-) }
+  }
+
+  if ($hget(track. $+ $network,$chan) != $null) {
+    var %msg = $strip($1-)
+    var %a = 1 | var %b = $gettok(%msg,0,32)
+    while (%a <= %b) {
+      if ($gettok(%msg,%a,32) isin $1-) || ($gettok(%msg,%a,32) iswm $1-) {
+        if ($window(@tracker) == $null) { window -e @tracker }
+        echo -ti @tracker $network / $nick > $strip($1-)
+        if ($active != $chan) { echo -ti $network $+ / $+ $chan $nick > $strip($1-) }
+      }
+      inc %a
+    }
+  }
   hinc -mu86400 msg. $+ $network $+ . $+ $chan $date(mm/dd/yy) 1
   hinc -mu3 recentmsg. $+ $chan $md5($strip($lower($1-))) 1
   if ($hget(recentmsg. $+ chan,$md5($strip($lower($1-)))) == 3) && ($hget(recentjoin. $+ $network $+ . $+ $chan,$nick) != $null) {
@@ -456,14 +474,14 @@ on *:dehalfop:#:{
   hinc -mu604800 dehalfopped. $+ $network $+ . $+ $chan $opnick 1
 }
 on *:voice:#:{
-  kstream $nick $+ : $+ $karma($nick,$network) voiced $nick $+ : $+ $karma($vnick,$network)
+  kstream $nick $+ : $+ $karma($nick,$network) voiced $vnick $+ : $+ $karma($vnick,$network)
   hinc -mu604800 voice. $+ $network $nick 1
   hinc -mu604800 voiced. $+ $network $vnick 1
 }
 on *:devoice:#:{
-  kstream $nick $+ : $+ $karma($nick,$network) devoiced $nick $+ : $+ $karma($vnick,$network)
+  kstream $nick $+ : $+ $karma($nick,$network) devoiced $vnick $+ : $+ $karma($vnick,$network)
   hinc -mu604800 devoice. $+ $network $nick 1
-  hinc -mu604800 devoiced. $+ $network $opnick 1
+  hinc -mu604800 devoiced. $+ $network $vnick 1
   hinc -mu604800 devoice. $+ $network $+ . $+ $chan  $nick 1
   hinc -mu604800 devoiced. $+ $network $+ . $+ $chan $vnick 1
 }
@@ -687,7 +705,7 @@ alias mmode {
   var %mode = $2
   var %nick = $3
   hadd -mu3 mode nicks %nick $hget(mode,nicks)
-  .timermode. $+ $network $+ . $+ %chan 1 1 mode %chan %mode %nick 
+  .timermode. $+ $network $+ . $+ %chan 1 3 mode %chan %mode %nick 
   if ($gettok($hget(mode,nicks),0,32) == $modespl) {
     mode %chan $left(%mode,1) $+ $str($right(%mode,1),$modespl) $hget(mode,nicks)
     hdel mode nicks
@@ -721,11 +739,11 @@ on *:input:#:{
 }
 
 menu channel {
-  Community Annoncements (Every 3 days)
-  .$chan Announcements:{
+  Community Annoncements
+  .$chan Announcements Repeater (Every 24 hours):{
     var %g = $?="Announce $chan community text every 24hours to say:"
     if (%g == $null) {
-    var %g = Welcome to $chan $+ ! You are using a nickname that is non-authentic. /nick <nickname> and enjoy your stay. Register your nickname with /msg NickServ register <password> <email> Please remember we do not always answer right away, so stick around for a bit. }
+    var %g = Welcome to $chan $+ ! You are using a nickname that isn't very unique. /nick <nickname> and enjoy your stay. Register your nickname with /msg NickServ register <password> <email> Please remember we do not always answer right away, so stick around for a bit. }
     announce $network $chan %g
   }
   .-
@@ -740,7 +758,7 @@ menu channel {
     hadd -m webgreet. $+ $network $chan %g
     echo -ta Set greeting for web-* users: %g
   }
-  .Greet All New Users (non web):{
+  .Greet All New Freenode Users (non web):{
     var %g = $?="Greet ALL new users with what message?"
     if (%g == $null) { var %g = Welcome to $chan $+ ! You are using a nickname that is non-authentic. /nick <nickname> and enjoy your stay. Please remember we do not always answer right away, so stick around for a bit. }
     hadd -m greet. $+ $network $chan %g
@@ -1375,6 +1393,16 @@ menu nicklist {
       writeini friends.ini $network $nick 0
       inc %a
     }
+  }
+  -
+  Tracker
+  .Track Nick:{
+    hadd -m track. $+ $network $nick 1
+    echo -ti $chan Now tracking $nick on $network
+  }
+  .Untrack Nick:{
+    hdel2 track. $+ $network $nick
+    echo -ti $chan Untracking $nick on $network
   }
   -
   Slap!:{

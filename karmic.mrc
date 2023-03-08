@@ -10,7 +10,7 @@ on *:connect:{
 
 on *:start:{
   config.set
-  echo -ts 48[14Karmic48]60: Keepin' it real since $date(yyyy)
+  echo -ts 48[14Karmic48]60: Keepin' it real since $date(yyyy)
 }
 
 alias config.set {
@@ -72,7 +72,7 @@ alias prblems {
   var %a = 1 | var %b = $lines(%f)
   echo -ta %a %b
   while (%a <= %b) {
-    msg $2 Needs Solution:00 $read(%f,%a)
+    msg $2 Needs Solution:00 $read(%f,%a)
     inc %a
   }
 }
@@ -250,9 +250,9 @@ on ^*:text:*:#:{
     }
   }
   ;if ($1 == !bang) || ($1 == !shop) || ($1 == !reload) && ($hget(ignoreducks. $+ $network,$chan) == 1) { halt }
-  ;if ( isin $1-) && (Duck isin $nick) && ($hget(ignoreducks. $+ $network,$chan) == 1) { halt }
+  ;if ( isin $1-) && (Duck isin $nick) && ($hget(ignoreducks. $+ $network,$chan) == 1) { halt }
   if ($hget(ignorebk. $+ $network,$chan) == 1) && ($karma($nick,$network) < $goodkarma) { halt }
-  kstream $chan 4<15 $+ $nick $+ 4:14 $+ $karma($nick,$network) $+ 4>0 $1-
+  kstream $chan 4<15 $+ $nick $+ 4:14 $+ $karma($nick,$network) $+ 4>0 $1-
   hinc -mu604800 msg. $+ $network $nick 0.1
   hinc -mu604800 msg. $+ $network $+ . $+ $chan $nick 1
   hinc -mu5 recenttalk. $+ $network $+ . $+ $chan $nick 1
@@ -386,7 +386,7 @@ on ^*:text:*:#:{
   }
 }
 on *:action:*:*:{
-  kstream $chan 4<15 $+ $nick $+ 4:14 $+ $karma($nick,$network) $+ 4>0 $1-
+  kstream $chan 4<15 $+ $nick $+ 4:14 $+ $karma($nick,$network) $+ 4>0 $1-
   hinc -mu604800 action. $+ $network $nick 1
   hinc -mu604800 action. $+ $network $+ . $+ $chan  $nick 1
   hinc -mu300 recenttalk. $+ $chan $nick 1
@@ -520,7 +520,7 @@ alias echonick {
 
 alias modeifgood {
   ;;modeifgood nick chan +o
-  if ($hget($network $+ .nsg,$1) != $null) || ($karma($1,$network) >= $goodkarma) {  mmode$2 $3 $1  }
+  if ($hget($network $+ .nsg,$1) != $null) || ($karma($1,$network) >= $goodkarma) {  mmode $2 $3 $1  }
 }
 
 alias wtp {
@@ -684,7 +684,7 @@ alias community {
   var %a = 1 | var %b = $chan(0)
   while (%a <= %b) {
     if ($hget(community. $+ $network,$chan(%a)) != $null) {
-      msg $chan(%a) [Community] $hget(community. $+ $network,$chan(%a))
+      msg $chan(%a) [Community] $hget(community. $+ $network,$chan(%a))
     }
     inc %a | inc %c
   }
@@ -695,7 +695,7 @@ alias announce {
     hadd -m community. $+ $1 $2 $3-
     echo -ta Set community announcer for $2 on $1 to announce:
     echo -ta $hget(community. $+ $1,$2)
-    msg $2 [Community] Set announcement for $1 on $2 $+ : $hget(community. $+ $1,$2)
+    msg $2 [Community] Set announcement for $1 on $2 $+ : $hget(community. $+ $1,$2)
     .timercommunity.announce 0 259200 scid -a community
   }
 }
@@ -907,7 +907,7 @@ menu channel {
     }
   }
   .-
-  .DeOwner Users (< $+ $goodkarma):{
+  .DeOwner Users (< $+ $goodkarma $+ ):{
     var %a = 1 | var %b = $nick($chan,0)
     while (%a <= %b) {
       var %nick = $nick($chan,%a)
@@ -918,7 +918,7 @@ menu channel {
     }
   }
   .-
-  .Admin Users (>= $+ $goodkarma):{
+  .Admin Users (>= $+ $goodkarma $+ ):{
     var %a = 1 | var %b = $nick($chan,0)
     while (%a <= %b) {
       var %nick = $nick($chan,%a)
@@ -929,7 +929,7 @@ menu channel {
     }
   }
   .-
-  .DeAdmin Users (< $+ $goodkarma):{
+  .DeAdmin Users (< $+ $goodkarma $+ ):{
     var %a = 1 | var %b = $nick($chan,0)
     while (%a <= %b) {
       var %nick = $nick($chan,%a)
@@ -940,7 +940,7 @@ menu channel {
     }
   }
   .-
-  .Op Users (>= $+ $goodkarma):{
+  .Op Users (>= $+ $goodkarma $+ ):{
     var %a = 1 | var %b = $nick($chan,0)
     while (%a <= %b) {
       var %nick = $nick($chan,%a)
@@ -1167,7 +1167,7 @@ menu nicklist {
     var %a = 1
     while ($gettok($snicks,%a,44) != $null) {
       var %n = $gettok($snicks,%a,44)
-      kill %n 
+      kill %n 
       inc %a
     }
   }
@@ -1175,7 +1175,7 @@ menu nicklist {
     var %a = 1
     while ($gettok($snicks,%a,44) != $null) {
       var %n = $gettok($snicks,%a,44)
-      gline %n 3d 3d gline: network interruption
+      gline %n 3d 3d gline: network interruption
       inc %a
     }
   }
@@ -1183,7 +1183,7 @@ menu nicklist {
     var %a = 1
     while ($gettok($snicks,%a,44) != $null) {
       var %n = $gettok($snicks,%a,44)
-      shun %n 1h Shun for 1 hour
+      shun %n 1h Shun for 1 hour
       inc %a
     }
   }
@@ -1410,6 +1410,14 @@ menu nicklist {
     while ($gettok($snicks,%a,44) != $null) {
       var %n = $gettok($snicks,%a,44)
       me slaps %n around a bit with a large trout
+      inc %a
+    }
+  }
+  Lightsaber:{
+    var %a = 1
+    while ($gettok($snicks,%a,44) != $null) {
+      var %n = $gettok($snicks,%a,44)
+      me fires lightsaber and stares at %n
       inc %a
     }
   }

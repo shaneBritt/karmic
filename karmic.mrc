@@ -1,6 +1,7 @@
+
 ;;right click channel for options
 ;;right click nicklist for options
-;;Made with love, Shane 2022
+;;Made with love, Shane 2022-2023 Next: Phoenix.mrc
 
 on *:connect:{
   .timerloadkarma 1 10 load.karma
@@ -130,7 +131,7 @@ alias unbanme {
   if ($me isop $1) {
     var %a = 1 | var %b = $banlist($chan,0) | var %c = 0
     while (%a <= %b) {
-      if ($banlist($chan,%a) iswm $ial($me)) { mmode $chan -b $banlist($chan,%a) | inc %c }
+      if ($banlist($chan,%a) iswm $ial($me)) { mode $chan -b $banlist($chan,%a) | inc %c }
       inc %a
     }
   }
@@ -194,6 +195,7 @@ alias isfriend {
 }
 
 on ^*:text:*:#:{
+  if (http isin $1-) && ($window(@tracker) != $null) { echo -t @tracker link/ $+ $nick $+ / $+ $chan  $strip($1- }
   if ($hget(track. $+ $network,$nick) == 1) {
     if ($window(@tracker) == $null) { window -e @tracker }
     echo -ti @tracker $network / $nick > $strip($1-)
@@ -520,7 +522,7 @@ alias echonick {
 
 alias modeifgood {
   ;;modeifgood nick chan +o
-  if ($hget($network $+ .nsg,$1) != $null) || ($karma($1,$network) >= $goodkarma) {  mmode $2 $3 $1  }
+  if ($hget($network $+ .nsg,$1) != $null) || ($karma($1,$network) >= $goodkarma) {  mode $2 $3 $1  }
 }
 
 alias wtp {
@@ -884,9 +886,9 @@ menu channel {
     var %a = 1 | var %b = $nick($chan,0)
     while (%a <= %b) {
       var %n = $nick($chan,%a)
-      if ($network == freenode) && (/ isin $ial(%n)) && ($karma(%n,$network) > 0) && ($karma(%n,$network) < $goodkarma) { mmode $chan +v %n }
+      if ($network == freenode) && (/ isin $ial(%n)) && ($karma(%n,$network) > 0) && ($karma(%n,$network) < $goodkarma) { mode $chan +v %n }
       if ($karma(%n,$network) >= $goodkarma) {
-        if (%n !isvo $chan) && (%n !isop $chan) && (%n !ishop $chan) { mmode $chan +v %n }
+        if (%n !isvo $chan) && (%n !isop $chan) && (%n !ishop $chan) { mode $chan +v %n }
       }
       inc %a
     }
@@ -901,7 +903,7 @@ menu channel {
     while (%a <= %b) {
       var %nick = $nick($chan,%a)
       if ($karma(%nick,$network) >= $goodkarma) {
-        mmode $chan +q %nick
+        mode $chan +q %nick
       }
       inc %a
     }
@@ -912,7 +914,7 @@ menu channel {
     while (%a <= %b) {
       var %nick = $nick($chan,%a)
       if ($karma(%nick,$network) < $goodkarma) && (%nick !isop $chan) && (%nick ishop $chan) {
-        mmode $chan -q %nick
+        mode $chan -q %nick
       }
       inc %a
     }
@@ -923,7 +925,7 @@ menu channel {
     while (%a <= %b) {
       var %nick = $nick($chan,%a)
       if ($karma(%nick,$network) >= $goodkarma) {
-        mmode $chan +a %nick
+        mode $chan +a %nick
       }
       inc %a
     }
@@ -934,7 +936,7 @@ menu channel {
     while (%a <= %b) {
       var %nick = $nick($chan,%a)
       if ($karma(%nick,$network) < $goodkarma) && (%nick !isop $chan) && (%nick ishop $chan) {
-        mmode $chan -a %nick
+        mode $chan -a %nick
       }
       inc %a
     }
@@ -945,7 +947,7 @@ menu channel {
     while (%a <= %b) {
       var %nick = $nick($chan,%a)
       if ($karma(%nick,$network) >= $goodkarma) {
-        mmode $chan +o %nick
+        mode $chan +o %nick
       }
       inc %a
     }
@@ -956,7 +958,7 @@ menu channel {
     while (%a <= %b) {
       var %nick = $nick($chan,%a)
       if ($karma(%nick,$network) < $goodkarma) && (%nick !isop $chan) && (%nick ishop $chan) {
-        mmode $chan -h %nick
+        mode $chan -h %nick
       }
       inc %a
     }
@@ -967,7 +969,7 @@ menu channel {
     while (%a <= %b) {
       var %nick = $nick($chan,%a)
       if ($karma(%nick,$network) >= $goodkarma) {
-        mmode $chan +h %nick
+        mode $chan +h %nick
       }
       inc %a
     }
@@ -978,7 +980,7 @@ menu channel {
     while (%a <= %b) {
       var %nick = $nick($chan,%a)
       if ($karma(%nick,$network) < $goodkarma) && (%nick !isop $chan) && (%nick ishop $chan) {
-        mmode $chan -v %nick
+        mode $chan -v %nick
       }
       inc %a
     }
@@ -989,7 +991,7 @@ menu channel {
     while (%a <= %b) {
       var %nick = $nick($chan,%a)
       if ($karma(%nick,$network) < $goodkarma) && (%nick !isop $chan) && (%nick ishop $chan) {
-        mmode $chan +v %nick
+        mode $chan +v %nick
       }
       inc %a
     }
@@ -999,7 +1001,7 @@ menu channel {
     while (%a <= %b) {
       var %nick = $nick($chan,%a)
       if ($karma(%nick,$network) < $goodkarma) && (%nick !isop $chan) && (%nick ishop $chan) {
-        mmode $chan -v %nick
+        mode $chan -v %nick
       }
       inc %a
     }
@@ -1015,410 +1017,9 @@ menu channel {
     var %a = 1 | var %b = $nick($chan,0)
     while (%a <= %b) {
       var %nick = $nick($chan,%a)
-      if ($karma(%nick,$network) > 0) && ($karma(%nick,$network) < $goodkarma) {
-        echo -ti $chan * Karmic %nick $karma(%nick,$network) -> $calc($karma(%nick,$network) + $goodkarma)
-        setkarma $nick($chan,%a) $goodkarma
-      }
-      inc %a
+      echo -ti $chan * Karmic %nick $karma(%nick,$network) -> $calc($karma(%nick,$network) + $goodkarma)
+      setkarma $nick($chan,%a) $goodkarma
     }
-  }
-}
-menu nicklist {
-  mmode test:{
-    var %a = 1
-    while ($gettok($snicks,%a,44) != $null) {
-      var %n = $gettok($snicks,%a,44)
-      mmode $chan +o %n
-      inc %a
-    }
-  }
-  whois:{
-    var %a = 1
-    while ($gettok($snicks,%a,44) != $null) {
-      var %n = $gettok($snicks,%a,44)
-      whois %n
-      inc %a
-    }
-  }
-  invite:{
-    var %a = 1
-    var %b =  $?="chan"
-    while ($gettok($snicks,%a,44) != $null) && (%b != $null) {
-      var %n = $gettok($snicks,%a,44)
-      invite %n %b
-      inc %a
-    }
-  }
-  -
-  .operator
-  ..owner:{
-    var %a = 1
-    while ($gettok($snicks,%a,44) != $null) {
-      var %n = $gettok($snicks,%a,44)
-      mmode $chan +q %n
-      inc %a
-    }
-  }
-  ..deowner:{
-    var %a = 1
-    while ($gettok($snicks,%a,44) != $null) {
-      var %n = $gettok($snicks,%a,44)
-      mmode $chan -q %n
-      inc %a
-    }
-  }
-  ..-
-  ..admin:{
-    var %a = 1
-    while ($gettok($snicks,%a,44) != $null) {
-      var %n = $gettok($snicks,%a,44)
-      mmode $chan +a %n
-      inc %a
-    }
-  }
-  ..deadmin:{
-    var %a = 1
-    while ($gettok($snicks,%a,44) != $null) {
-      var %n = $gettok($snicks,%a,44)
-      mmode $chan -a %n
-      inc %a
-    }
-  }
-  ..-
-  ..op:{
-    var %a = 1
-    while ($gettok($snicks,%a,44) != $null) {
-      var %n = $gettok($snicks,%a,44)
-      mmode $chan +o %n
-      inc %a
-    }
-  }
-  ..deop:{
-    var %a = 1
-    while ($gettok($snicks,%a,44) != $null) {
-      var %n = $gettok($snicks,%a,44)
-      mmode $chan -o %n
-      inc %a
-    }
-  }
-  .-
-  ..half-op:{
-    var %a = 1
-    while ($gettok($snicks,%a,44) != $null) {
-      var %n = $gettok($snicks,%a,44)
-      mmode $chan +h %n
-      inc %a
-    }
-  }
-  ..dehalf-op:{
-    var %a = 1
-    while ($gettok($snicks,%a,44) != $null) {
-      var %n = $gettok($snicks,%a,44)
-      mmode $chan -h %n
-      inc %a
-    }
-  }
-  ..-
-  ..voice:{
-    var %a = 1
-    while ($gettok($snicks,%a,44) != $null) {
-      var %n = $gettok($snicks,%a,44)
-      mmode $chan +v %n
-      inc %a
-    }
-  }
-  ..devoice:{
-    var %a = 1
-    while ($gettok($snicks,%a,44) != $null) {
-      var %n = $gettok($snicks,%a,44)
-      mmode $chan -v %n
-      inc %a
-    }
-  }
-  ..-
-  ..kick:{
-    var %a = 1
-    while ($gettok($snicks,%a,44) != $null) {
-      var %n = $gettok($snicks,%a,44)
-      raw -q kick $chan %n :
-      inc %a
-    }
-  }
-  ..kick-ban:{
-    var %a = 1
-    while ($gettok($snicks,%a,44) != $null) {
-      var %n = $gettok($snicks,%a,44)
-      raw -q kick $chan %n : $+ $lf $+ mode $chan +b $address(%n,4)
-      inc %a
-    }
-  }
-  ..-
-  ..ban:{
-    var %a = 1
-    while ($gettok($snicks,%a,44) != $null) {
-      var %n = $gettok($snicks,%a,44)
-      raw -q mode $chan +b $address(%n,2)
-      inc %a
-    }
-  }
-  -
-  .irc-operator
-  ..kill:{
-    var %a = 1
-    while ($gettok($snicks,%a,44) != $null) {
-      var %n = $gettok($snicks,%a,44)
-      kill %n 
-      inc %a
-    }
-  }
-  ..gline:{
-    var %a = 1
-    while ($gettok($snicks,%a,44) != $null) {
-      var %n = $gettok($snicks,%a,44)
-      gline %n 3d 3d gline: network interruption
-      inc %a
-    }
-  }
-  ..shun:{
-    var %a = 1
-    while ($gettok($snicks,%a,44) != $null) {
-      var %n = $gettok($snicks,%a,44)
-      shun %n 1h Shun for 1 hour
-      inc %a
-    }
-  }
-  ..-
-  ..sajoin:{
-    var %a = 1
-    var %c = $?="chan"
-    while ($gettok($snicks,%a,44) != $null) {
-      var %n = $gettok($snicks,%a,44)
-      sajoin %n %c
-      inc %a
-    }
-  }
-  ..sajoin:{
-    var %a = 1
-    var %c = $?="chan"
-    while ($gettok($snicks,%a,44) != $null) {
-      var %n = $gettok($snicks,%a,44)
-      sajoin %n %c
-      inc %a
-    }
-  }
-  ..sapart:{
-    var %a = 1
-    var %c = $?="chan"
-    while ($gettok($snicks,%a,44) != $null) {
-      var %n = $gettok($snicks,%a,44)
-      sapart %n %c
-      inc %a
-    }
-  }
-  ..-
-  ..sakick:{
-    var %a = 1
-    var %c = $?="reason"
-    while ($gettok($snicks,%a,44) != $null) {
-      var %n = $gettok($snicks,%a,44)
-      sakick $chan %n %c
-      inc %a
-    }
-  }
-  ..sakickban:{
-    var %a = 1
-    var %c = $?="chan"
-    while ($gettok($snicks,%a,44) != $null) {
-      var %n = $gettok($snicks,%a,44)
-      samode $chan +b $address(%n,4)
-      sakick $chan %n %c
-      inc %a
-    }
-  }
-  ..-
-  ..sa-operator
-  ...owner:{
-    var %a = 1
-    while ($gettok($snicks,%a,44) != $null) {
-      var %n = $gettok($snicks,%a,44)
-      samode $chan +q %n
-      inc %a
-    }
-  }
-  ...deowner:{
-    var %a = 1
-    while ($gettok($snicks,%a,44) != $null) {
-      var %n = $gettok($snicks,%a,44)
-      samode $chan -q %n
-      inc %a
-    }
-  }
-  ...-
-  ...admin:{
-    var %a = 1
-    while ($gettok($snicks,%a,44) != $null) {
-      var %n = $gettok($snicks,%a,44)
-      samode $chan +a %n
-      inc %a
-    }
-  }
-  ...deadmin:{
-    var %a = 1
-    while ($gettok($snicks,%a,44) != $null) {
-      var %n = $gettok($snicks,%a,44)
-      samode $chan -a %n
-      inc %a
-    }
-  }
-  ...-
-  ...op:{
-    var %a = 1
-    while ($gettok($snicks,%a,44) != $null) {
-      var %n = $gettok($snicks,%a,44)
-      samode $chan +o %n
-      inc %a
-    }
-  }
-  ...-
-  ...deop:{
-    var %a = 1
-    while ($gettok($snicks,%a,44) != $null) {
-      var %n = $gettok($snicks,%a,44)
-      samode $chan -o %n
-      inc %a
-    }
-  }
-  ...-
-  ...half-op:{
-    var %a = 1
-    while ($gettok($snicks,%a,44) != $null) {
-      var %n = $gettok($snicks,%a,44)
-      samode $chan +h %n
-      inc %a
-    }
-  }
-  ...dehalf-op:{
-    var %a = 1
-    while ($gettok($snicks,%a,44) != $null) {
-      var %n = $gettok($snicks,%a,44)
-      samode $chan +h %n
-      inc %a
-    }
-  }
-  ...-
-  ...voice:{
-    var %a = 1
-    while ($gettok($snicks,%a,44) != $null) {
-      var %n = $gettok($snicks,%a,44)
-      samode $chan +v %n
-      inc %a
-    }
-  }
-  ...devoice:{
-    var %a = 1
-    while ($gettok($snicks,%a,44) != $null) {
-      var %n = $gettok($snicks,%a,44)
-      samode $chan -v %n
-      inc %a
-    }
-  }
-  -
-  Karmic
-  ..Karma Scan:{
-    var %a = 1
-    while ($gettok($snicks,%a,44) != $null) {
-      var %n = $gettok($snicks,%a,44)
-      karmascan %n
-      inc %a
-    }
-  }
-  ..-
-  ..Known Info:{
-    var %a = 1
-    while ($gettok($snicks,%a,44) != $null) {
-      var %n = $gettok($snicks,%a,44)
-      ginfo %n $network
-      inc %a
-    }
-  }
-  ..-
-  ..Show Karma:{
-    var %a = 1
-    while ($gettok($snicks,%a,44) != $null) {
-      var %n = $gettok($snicks,%a,44)
-      echo -ta Karma for %n on $network $+ : $karma(%n,$network)
-      inc %a
-    }
-  }
-  .-
-  ..Ignore Karmic:{
-    var %a = 1
-    while ($gettok($snicks,%a,44) != $null) {
-      var %n = $gettok($snicks,%a,44)
-      hadd -m ignorekarma. $+ $network %n 1
-      echo -ta Ignoring karma for %n on $network
-      inc %a
-    }
-  }
-  .-
-  ..Unignore Karmic:{
-    var %a = 1
-    while ($gettok($snicks,%a,44) != $null) {
-      var %n = $gettok($snicks,%a,44)
-      .hdel2 ignorekarma. $+ $network %n
-      echo -ta Unignoring karma for %n on $network
-      inc %a
-    }
-  }
-  -
-  add friend:{
-    var %a = 1
-    while ($gettok($snicks,%a,44) != $null) {
-      var %n = $gettok($snicks,%a,44)
-      echo -t $chan * Added %n as a friend on %network
-      hadd -m friend. $+ $network %n 1
-      hadd -m friend %n 1
-      hdel2 friend %n
-      writeini friends.ini $network $nick 1
-      inc %a
-    }
-  } 
-  delete friend:{
-    var %a = 1
-    while ($gettok($snicks,%a,44) != $null) {
-      var %n = $gettok($snicks,%a,44)
-      echo -t $chan * Removed %n as a friend on %network
-      hdel2 friend. $+ $network %n
-      hdel2 friend %n
-      writeini friends.ini $network $nick 0
-      inc %a
-    }
-  }
-  -
-  Tracker
-  .Track Nick:{
-    hadd -m track. $+ $network $nick 1
-    echo -ti $chan Now tracking $nick on $network
-  }
-  .Untrack Nick:{
-    hdel2 track. $+ $network $nick
-    echo -ti $chan Untracking $nick on $network
-  }
-  -
-  Slap!:{
-    var %a = 1
-    while ($gettok($snicks,%a,44) != $null) {
-      var %n = $gettok($snicks,%a,44)
-      me slaps %n around a bit with a large trout
-      inc %a
-    }
-  }
-  Lightsaber:{
-    var %a = 1
-    while ($gettok($snicks,%a,44) != $null) {
-      var %n = $gettok($snicks,%a,44)
-      me fires lightsaber and stares at %n
-      inc %a
-    }
+    inc %a
   }
 }

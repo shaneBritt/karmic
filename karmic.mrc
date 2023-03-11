@@ -153,7 +153,7 @@ alias gload.karma {
     var %karma = $gettok(%line,2,$asc(=))
     if ($gettok(%line,0,$asc(=)) >= 1) && ($chr($asc([)) !isin %line) {
       if ($karma(%nick,$network) != $null) && ($hget(nre. $+ $network,%nick) == $null) {
-        setkarma $gettok(%line,1,$asc(=)) $gettok(%line,2,$asc(=)) | hadd -mu3 nre. $+ $neetwork %nick 1
+        setkarma $gettok(%line,1,$asc(=)) $gettok(%line,2,$asc(=)) | hadd -mu3 nre. $+ $network %nick 1
       }
     }
     inc %a

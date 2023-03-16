@@ -215,8 +215,9 @@ alias isfriend {
   if ($hget(friend. $+ $network,$1) == $null) { return 0 }
 }
 
-on ^*:text:*:#:{
-  if (http isin $1-) && ($window(@tracker) != $null) { echo -t @tracker link/ $+ $nick $+ / $+ $chan  $strip($1-) }
+on *:text:*:#:{
+  ;kstream $chan 4<15 $+ $nick $+ 4:14 $+ $karma($nick,$network) $+ 4>0 $1-
+  ;;if (http isin $1-) && ($window(@tracker) != $null) { echo -t @tracker link/ $+ $nick $+ / $+ $chan  $strip($1-) }
   if ($hget(track. $+ $network,$nick) == 1) {
     if ($window(@tracker) == $null) { window -e @tracker }
     echo -ti @tracker $network / $nick > $strip($1-)
@@ -614,8 +615,7 @@ alias ginfo {
 alias kstream {
   config.set
   if ($window(@kstream) == $null) { window -e @kstream $chan }
-  if ($gettok($1-,0,$asc()) >= 2) { halt }
-  echo -ti @kstream $strip($1-)
+  echo -ti @kstream $1-
 }
 
 alias ignorekarma {
@@ -777,17 +777,25 @@ menu channel {
     .timercommunity. $+ $network $+ . $+ $chan off
   }
   Greetings
-  .Greet Web-users for freenode:{
+  .Greet Web-* users for freenode:{
     var %g = $?="Greet new web-* users with what message?"
     if (%g == $null) { var %g = Welcome to $chan $+ ! You are using a nickname that is non-authentic. /nick <nickname> and enjoy your stay. Please remember we do not always answer right away, so stick around for a bit. }
     hadd -m webgreet. $+ $network $chan %g
-    echo -ta Set greeting for web-* users: %g
+    me Set greeting for web-* users: %g
   }
-  .Greet All New Freenode Users (non web):{
+  .Greet All On Join:{
     var %g = $?="Greet ALL new users with what message?"
     if (%g == $null) { var %g = Welcome to $chan $+ ! You are using a nickname that is non-authentic. /nick <nickname> and enjoy your stay. Please remember we do not always answer right away, so stick around for a bit. }
     hadd -m greet. $+ $network $chan %g
-    echo -ta Set greeting for ALL users: %g
+    ;echo -ta Set greeting for ALL users: %g
+    me * Set greeting for ALL users joining: %g
+  }
+  .-
+  .Disable Greets:{
+    hdel2 webgreet. $+ $network $chan %g
+    hdel2 greet. $+ $network $chan %g
+    ;echo -tia * Removed geeting! %g
+    me * Removed geeting! %g
   }
   -
   Karmic Autos

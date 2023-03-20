@@ -1,3 +1,6 @@
+# Require
+- https://github.com/flakes/mirc_fish_10
+
 # karmic
 irc helper for irc. Identify problems and add solutions for IRC channels/communities.
 users get a score based on how they use IRC networks.

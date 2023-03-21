@@ -1,6 +1,6 @@
 ;;right click channel for options
 ;;right click nicklist for options
-;;Made with love, Shane 2022-2023 Next: Phoenix.mrc
+;;Made with love, Shane 2022-2023
 
 on *:connect:{
   .timerloadkarma 1 10 load.karma
@@ -16,12 +16,13 @@ on *:start:{
 alias config.set {
   ;;karma that bot considers good in order to consier them authentic (for modes and stuff)
   ;;edit line below
-  window -e @kstream | window -e @tracker
+  window -e @kstream | window -e @updater
   var %goodkarma = 0.15
   var %polltime = 5m (add later: time for poll expirery)
   hadd -m good karma %goodkarma
   ;;turn minutes in to seconds
   hadd -m poll time $calc($replace(%polltime,m,* 60))
+  if (%salt == $null) { set %salt $sha1($me $+ : $+ $calc($ctime) / $r(1,999)) }
 }
 
 alias goodkarma {
@@ -261,22 +262,40 @@ alias isfriend {
   if ($hget(friend. $+ $network,$1) == $null) { return 0 }
 }
 
+raw 716:*:{
+  ;server side ignore (+g) rizon etc
+  if ($karma($1,$network) >= $goodkarma) && ($1 != $me) {
+    if ($address($1,5) != $null) { accept $address($1,5) | echo -tsia * $1 has good karma and is automatically added to your /accept list for private conversations }
+  }
+}
+raw 718:*:{
+  ; <- @time=2023-03-21T21:51:21.408Z :irc.uworld.se 718 mrinfinity s ~s@255E01B0.E081D6EE.383E1A3.IP :is messaging you, and you are umode +g.
+  echo -s $1-
+  if ($karma($2,$network) >= $goodkarma) && ($2 != $me) {
+    if ($address($2,5) != $null) { accept $address($2,5) 
+      echo -tsia * $2 has good karma and is automatically added to your /accept list for private conversations
+      query $2 [auto] hey - sorry I missed your message can you send it again?
+      echo -tsia $chan * It is suggested to use fish encryption or discuss securely via other methods.
+    }
+  }
+}
+
 on *:text:*:#:{
   ;kstream $chan 4<15 $+ $nick $+ 4:14 $+ $karma($nick,$network) $+ 4>0 $1-
-  ;;if (http isin $1-) && ($window(@tracker) != $null) { echo -t @tracker link/ $+ $nick $+ / $+ $chan  $strip($1-) }
-  if ($hget(track. $+ $network,$nick) == 1) {
-    if ($window(@tracker) == $null) { window -e @tracker }
-    echo -ti @tracker $network / $nick > $strip($1-)
+  ;;if (http isin $1-) && ($window(@updater) != $null) { echo -t @updater link/ $+ $nick $+ / $+ $chan  $strip($1-) }
+  if ($hget(update. $+ $network,$nick) == 1) {
+    if ($window(@updater) == $null) { window -e @updater }
+    echo -ti @updater $network / $nick > $strip($1-)
     if ($active != $chan) { echo -ti $network $+ / $+ $chan $nick > $strip($1-) }
   }
 
-  if ($hget(track. $+ $network,$chan) != $null) {
+  if ($hget(update. $+ $network,$chan) != $null) {
     var %msg = $strip($1-)
     var %a = 1 | var %b = $gettok(%msg,0,32)
     while (%a <= %b) {
       if ($gettok(%msg,%a,32) isin $1-) || ($gettok(%msg,%a,32) iswm $1-) {
-        if ($window(@tracker) == $null) { window -e @tracker }
-        echo -ti @tracker $network / $nick > $strip($1-)
+        if ($window(@updater) == $null) { window -e @updater }
+        echo -ti @updater $network / $nick > $strip($1-)
         if ($active != $chan) { echo -ti $network $+ / $+ $chan $nick > $strip($1-) }
       }
       inc %a
@@ -822,7 +841,13 @@ menu channel {
     if (%n isnum) { nik $chan %n }
   }
   .-
-  .List Karma 
+  .List Karmic Users in Channel:{
+    var %a = 1 | var %b = $nick($chan,%a)
+    while (%a <= %b) {
+      if ($karma($nick($chan,%a)) >= 0.0001) { echo -tias $nick($chan,%a) has karma $karma($nick($chan,%a)) }
+      inc %a
+    }
+  }
   Community Annoncements
   .$chan Announcements Repeater (Every 24 hours):{
     var %g = $?="Announce $chan community text every 24hours to say:"
@@ -1492,12 +1517,12 @@ menu nicklist {
   .-
   .Follow
   ..Follow Nick:{
-    hadd -m track. $+ $network $nick 1
-    echo -ti $chan Now tracking $nick on $network
+    hadd -m update. $+ $network $nick 1
+    echo -ti $chan Now updatng $nick on $network
   }
   ..Unfollow Nick:{
-    hdel2 track. $+ $network $nick
-    echo -ti $chan Untracking $nick on $network
+    hdel2 update. $+ $network $nick
+    echo -ti $chan Unupdatng $nick on $network
   }
   -
   Trout Slap!:{

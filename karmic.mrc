@@ -111,22 +111,20 @@ on ^*:join:#:{
       if ($me isop $chan) { raw -q mode $chan +b $address($nick,4) $+ $lf $+ kick $chan $nick -karmic }
     }
   }
-  if ($nick != $me) {
-    if ($left($nick,4) == web-) && ($network == freenode) {
-      if ($hget(greet. $+ $network,$chan) != $null) {
-        .notice $nick $hget(webgreet. $+ $network,$chan)
-      }
+  if ($left($nick,4) == web-) && ($network == freenode) {
+    if ($hget(webgreet. $+ $network,$chan) != $null) {
+      .notice $nick $hget(webgreet. $+ $network,$chan)
     }
-    if ($hget(greet. $+ $network,$chan) != $null) && ($karma($nick,$network) <= $goodkarma) {
-      .notice $nick $hget(greet. $+ $network,$chan)
-    }
-    if ($hget(amode. $+ $network,$chan) != $null) {
-      .timer 1 $r(35,75) modeifgood $nick $chan $hget(amode. $+ $network,$chan)
-    }
-    hinc -m join. $+ $network $nick 1
-    if ($hget(ns.name,$nick) == $null) && ($karma($nick,$network) <= $goodkarma)  {
-      .timernsinfo. $+ $network $+ . $+ $nick 1 $r(1,35) .nsinfo $nick
-    }
+  }
+  if ($hget(webgreet. $+ $network,$chan) != $null) && ($karma($nick,$network) <= $goodkarma) {
+    .notice $nick $hget(greet. $+ $network,$chan)
+  }
+  if ($hget(amode. $+ $network,$chan) != $null) {
+    .timer 1 $r(35,75) modeifgood $nick $chan $hget(amode. $+ $network,$chan)
+  }
+  hinc -m join. $+ $network $nick 1
+  if ($hget(ns.name,$nick) == $null) && ($karma($nick,$network) <= $goodkarma)  {
+    .timernsinfo. $+ $network $+ . $+ $nick 1 $r(1,35) .nsinfo $nick
   }
   if ($hget(ij. $+ $network,$chan) == 1) && ($karma($nick,$network) < $goodkarma) { halt }
 }
@@ -692,7 +690,7 @@ alias ignorekarma {
 
 alias karma {
   var %total = 0
-  if ($hget(ignorekarma. $+ $2,$1) != $null) || ($hget(ignorekarma. $+ $2,$2) != $null) { return 000 }
+  ; if ($hget(ignorekarma. $+ $2,$1) != $null) || ($hget(ignorekarma. $+ $2,$2) != $null) { return 000 }
   if ($isfriend($1) == 1) { return 99999 }
   var %total = $calc(%total + 0. $+ $calc(%total + 0 + $hget(seen. $+ $2,$1)))
   var %total = $calc(%total + 0 + $hget(ns.name. $+ $2,$1))
@@ -865,14 +863,14 @@ menu channel {
     var %g = $?="Greet new web-* users with what message?"
     if (%g == $null) { var %g = Welcome to $chan $+ ! You are using a nickname that is non-authentic. /nick <nickname> and enjoy your stay. Please remember we do not always answer right away, so stick around for a bit. }
     hadd -m webgreet. $+ $network $chan %g
-    me Set greeting for web-* users: %g
+    echo -ta /me Set greeting for web-* users: %g
   }
   .Greet All On Join:{
     var %g = $?="Greet ALL new users with what message?"
     if (%g == $null) { var %g = Welcome to $chan $+ ! You are using a nickname that is non-authentic. /nick <nickname> and enjoy your stay. Please remember we do not always answer right away, so stick around for a bit. }
     hadd -m greet. $+ $network $chan %g
     ;echo -ta Set greeting for ALL users: %g
-    me * Set greeting for ALL users joining: %g
+    echo -ta /me * Set greeting for ALL users joining: %g
   }
   .-
   .Disable Greets:{
